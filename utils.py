@@ -13,6 +13,5 @@ def load_data(standardized):
     df = pd.DataFrame(data["X"], index=data["dates"],
                       columns=["Open", "High", "Low", "Close", "Adjusted_close", "Volume"])
     df["y_reg"] = data["y_reg"]
-    df["y_clf"] = data["y_clf"]
 
     return df

@@ -1,4 +1,4 @@
-from utils import load_data
+from data_loader import load_data
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error

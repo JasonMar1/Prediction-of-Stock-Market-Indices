@@ -1,11 +1,47 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import os
+
+# Get the absolute path of the project's root directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Mapping of available indices to corresponding letters
+INDEX_MAPPING = {
+    "A": "DJA",  # Dow Jones Industrial Average
+    "B": "DWCF",  # Dow Jones Wilshire 5000 Total Market Index
+    "C": "GSPC",  # S&P 500
+    "D": "IXIC",  # NASDAQ Composite
+    "E": "NYA",  # NYSE Composite Index
+    "F": "W5000"  # Wilshire 5000 Total Market Index
+}
+
+# Reverse mapping to retrieve filenames
+AVAILABLE_INDICES = {v: f"{v}.INDX.csv" for v in INDEX_MAPPING.values()}
+
+
+def pick_index():
+    print("Pick an index:")
+    for letter, index in INDEX_MAPPING.items():
+        print(f"  {letter}) {index}")
+
+    choice = input("Enter the corresponding letter: ").strip().upper()
+
+    if choice not in INDEX_MAPPING:
+        raise ValueError(f"Invalid choice: {choice}. Please select a valid letter.")
+
+    return INDEX_MAPPING[choice]
 
 
 def load_data(standardized):
-    """Load dataset directly from CSV and preprocess it."""
-    file_path = "index_data/GSPC.INDX.csv"
+    """Load dataset for the user-selected index and preprocess it."""
+    index_name = pick_index()
+
+    file_path = os.path.join(BASE_DIR, "index_data", AVAILABLE_INDICES[index_name])
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
     df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
 
     # Ignore all data before 1950-01-03
@@ -35,18 +71,23 @@ def load_data(standardized):
 
     return df_processed
 
+
 def load_monthly_data(standardized):
-    """Load dataset directly from CSV, aggregate to monthly, and preprocess it."""
-    file_path = "index_data/GSPC.INDX.csv"
+    """Load dataset for the user-selected index, aggregate to monthly, and preprocess it."""
+    index_name = pick_index()
+
+    file_path = os.path.join(BASE_DIR, "index_data", AVAILABLE_INDICES[index_name])
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
     df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
 
     # Ignore all data before 1950-01-03
     df = df[df.index >= "1950-01-03"]
 
     # Aggregate daily data into monthly data.
-    # For prices: first Open, max High, min Low, last Close & Adjusted_close.
-    # For Volume: sum the values.
-    monthly_df = df.resample("M").agg({
+    monthly_df = df.resample("ME").agg({
         "Open": "first",
         "High": "max",
         "Low": "min",

@@ -5,10 +5,10 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 import pandas as pd
 
 TRAIN_START_DATE = "2000-01-01"
-TRAIN_END_DATE   = "2024-12-23"
+TRAIN_END_DATE = "2024-12-23"
 
-TEST_START_DATE  = "2024-12-24"
-TEST_END_DATE    = "2025-01-24"
+TEST_START_DATE = "2024-12-24"
+TEST_END_DATE = "2025-01-24"
 
 df_standardized = load_data(standardized=True)
 

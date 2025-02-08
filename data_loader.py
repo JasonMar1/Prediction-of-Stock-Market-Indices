@@ -177,31 +177,43 @@ def load_data_log_returns(standardized, TRAIN_START_DATE, TEST_END_DATE):
     df = df[TRAIN_START_DATE:TEST_END_DATE]
 
     # Compute Log Returns for different shifts
-    max_shift = 10
+    max_shift = 5
     for i in range(1, max_shift + 1):
         df[f"Log_Returns_{i}"] = np.log(df["Close"]) - np.log(df["Close"].shift(i))
+
+    df[f"Log_Returns_{1}"] = np.log(df["Close"]) - np.log(df["Close"].shift(1))
 
     df["Log_Returns_Tomorrow"] = df["Log_Returns_1"].shift(-1)  # Target variable
 
     # Drop missing values (first row & last row will have NaN)
     df.dropna(inplace=True)
 
-    features = ["Close"]
+    log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
+    # log_return_columns = ["Log_Returns_1"]
+
+    # features = ['Close']
+    features = []
+    all_features = features + log_return_columns
 
     # Extract Features & Target
     X = df[features]
     y_reg = df["Log_Returns_Tomorrow"]
 
     if standardized:
-        # Standardize Features
-        scaler = StandardScaler()
-        X = scaler.fit_transform(X)
+        if features:
+            # Standardize Features
+            scaler = StandardScaler()
+            X = scaler.fit_transform(X)
+        else:
+            print('empty')
 
     # Convert to DataFrame
     df_processed = pd.DataFrame(X, index=df.index, columns=features)
-    df_processed["y_reg"] = y_reg  # Add target variable
 
-    log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
     df_processed[log_return_columns] = df[log_return_columns]
 
-    return df_processed
+
+    df_processed["y_reg"] = y_reg  # Add target variable
+
+    print(df_processed)
+    return df_processed, all_features

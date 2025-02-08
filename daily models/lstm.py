@@ -44,7 +44,7 @@ class LSTMRegressor(nn.Module):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
         out, _ = self.lstm(x, (h0, c0))
-        out = out[:, -1, :]  # Use output from the last time step.
+        out = out[:, -1, :]  # Use output from the last time step. (flattened)
         out = self.fc(out)
         return out
 

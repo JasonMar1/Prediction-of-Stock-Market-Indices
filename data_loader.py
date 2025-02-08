@@ -54,7 +54,7 @@ def load_data(standardized):
     # Drop missing values (first row & last row will have NaN)
     df.dropna(inplace=True)
 
-    features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
+    features = ["Open", "High", "Low", "Close", "Volume"]
 
     # Extract Features & Target
     X = df[features]
@@ -115,5 +115,93 @@ def load_monthly_data(standardized):
     # Convert to DataFrame
     df_processed = pd.DataFrame(X, index=monthly_df.index, columns=features)
     df_processed["y_reg"] = y_reg
+
+    return df_processed
+
+
+def load_weekly_data(standardized):
+    index_name = pick_index()
+    file_path = os.path.join(BASE_DIR, "index_data", AVAILABLE_INDICES[index_name])
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
+
+    # Ignore all data before 1950-01-03
+    df = df[df.index >= "1950-01-03"]
+
+    # Weekly Log Returns
+    weekly_df = df.resample("W-FRI").agg({
+        "Open": "first",
+        "High": "max",
+        "Low": "min",
+        "Close": "last",
+        "Adjusted_close": "last",
+        "Volume": "sum"
+    })
+
+    weekly_df["Log_Returns"] = np.log(weekly_df["Close"]) - np.log(weekly_df["Close"].shift(1))
+    weekly_df["Log_Returns_Tomorrow"] = weekly_df["Log_Returns"].shift(-1)
+    weekly_df.dropna(inplace=True)
+
+    features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
+    X = weekly_df[features]
+    y_reg = weekly_df["Log_Returns_Tomorrow"]
+
+    if standardized:
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+
+    df_processed = pd.DataFrame(X, index=weekly_df.index, columns=features)
+    df_processed["y_reg"] = y_reg
+
+    return df_processed
+
+
+def load_data_log_returns(standardized, TRAIN_START_DATE, TEST_END_DATE):
+    """Load dataset for the user-selected index and preprocess it."""
+    index_name = pick_index()
+
+    file_path = os.path.join(BASE_DIR, "index_data", AVAILABLE_INDICES[index_name])
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
+
+    # Ignore all data before 1950-01-03
+    df = df[df.index >= "1950-01-03"]
+
+
+    df = df[TRAIN_START_DATE:TEST_END_DATE]
+
+    # Compute Log Returns for different shifts
+    max_shift = 10
+    for i in range(1, max_shift + 1):
+        df[f"Log_Returns_{i}"] = np.log(df["Close"]) - np.log(df["Close"].shift(i))
+
+    df["Log_Returns_Tomorrow"] = df["Log_Returns_1"].shift(-1)  # Target variable
+
+    # Drop missing values (first row & last row will have NaN)
+    df.dropna(inplace=True)
+
+    features = ["Close"]
+
+    # Extract Features & Target
+    X = df[features]
+    y_reg = df["Log_Returns_Tomorrow"]
+
+    if standardized:
+        # Standardize Features
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+
+    # Convert to DataFrame
+    df_processed = pd.DataFrame(X, index=df.index, columns=features)
+    df_processed["y_reg"] = y_reg  # Add target variable
+
+    log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
+    df_processed[log_return_columns] = df[log_return_columns]
 
     return df_processed

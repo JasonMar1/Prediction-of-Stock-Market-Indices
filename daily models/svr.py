@@ -1,28 +1,35 @@
-from data_loader import load_data
+from data_loader import load_data_log_returns
 from sklearn.svm import SVR
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 import pandas as pd
 
-TRAIN_START_DATE = "2000-01-01"
+TRAIN_START_DATE = "2000-01-05"
 TRAIN_END_DATE = "2024-12-23"
 
 TEST_START_DATE = "2024-12-24"
 TEST_END_DATE = "2025-01-24"
 
-df_standardized = load_data(standardized=True)
+df_standardized = load_data_log_returns(True, TRAIN_START_DATE, TEST_END_DATE)
 
 # Split the data by date
 df_train = df_standardized.loc[TRAIN_START_DATE:TRAIN_END_DATE]
 df_test = df_standardized.loc[TEST_START_DATE:TEST_END_DATE]
 
-features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
+features = ["Log_Returns_1"]
 
 X_train = df_train[features]
 y_train = df_train["y_reg"]
 
 X_test = df_test[features]
 y_test = df_test["y_reg"]
+
+
+print(X_train)
+print(y_train)
+print('----------------------------')
+print(X_test)
+print(y_test)
 
 svr = SVR()
 

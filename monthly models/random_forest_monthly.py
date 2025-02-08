@@ -1,20 +1,20 @@
-from data_loader import load_data
+from data_loader import load_monthly_data
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 import pandas as pd
 
+
 TRAIN_START_DATE = "2000-01-01"
-TRAIN_END_DATE   = "2015-01-23"
+TRAIN_END_DATE = "2023-12-31"
 
-TEST_START_DATE  = "2016-01-24"
-TEST_END_DATE    = "2017-01-24"
+TEST_START_DATE = "2024-01-01"
+TEST_END_DATE = "2025-01-24"
 
-df_standardized = load_data(standardized=True)
+df_monthly = load_monthly_data(standardized=True)
 
-# Split the data by date
-df_train = df_standardized.loc[TRAIN_START_DATE:TRAIN_END_DATE]
-df_test = df_standardized.loc[TEST_START_DATE:TEST_END_DATE]
+df_train = df_monthly.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+df_test = df_monthly.loc[TEST_START_DATE:TEST_END_DATE]
 
 features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
 
@@ -31,15 +31,13 @@ rf = RandomForestRegressor(random_state=42)
 param_grid = {
     "n_estimators": [20, 50, 100, 200, 500],      # Number of trees in the forest
     "max_depth": [None, 10, 20, 30],       # Maximum depth of the trees
-    "min_samples_split": [2, 5, 10],      # Minimum number of samples required to split an internal node
-    "max_features": ["sqrt", "log2", None]  # Number of features to consider when looking for the best split
+    "min_samples_split": [2, 5, 10],   # Minimum number of samples required to split an internal node
+    "max_features": ["sqrt", "log2", None]       # Number of features to consider when looking for the best split (better results using it)
 }
 
 # Use TimeSeriesSplit for time series cross-validation
 tscv = TimeSeriesSplit(n_splits=5)
 
-# Set up GridSearchCV with the negative mean absolute error as scoring.
-# (negative metric because GridSearchCV maximizes the score.)
 grid_search = GridSearchCV(rf, param_grid, cv=tscv, scoring="neg_mean_absolute_error", verbose=1, n_jobs=-1)
 grid_search.fit(X_train, y_train)
 

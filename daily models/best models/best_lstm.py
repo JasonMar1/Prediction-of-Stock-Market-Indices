@@ -25,10 +25,10 @@ df_test = df_standardized.loc[TEST_START_DATE:TEST_END_DATE]
 features = ["Open", "High", "Low", "Close", "Volume"]
 
 X_train = df_train[features].values  # shape: (n_train_samples, num_features)
-y_train = df_train["y_reg"].values  # shape: (n_train_samples,)
+y_train = df_train["y"].values  # shape: (n_train_samples,)
 
 X_test = df_test[features].values
-y_test = df_test["y_reg"].values
+y_test = df_test["y"].values
 
 
 class LSTMRegressor(nn.Module):

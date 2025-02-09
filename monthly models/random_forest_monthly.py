@@ -19,10 +19,10 @@ df_test = df_monthly.loc[TEST_START_DATE:TEST_END_DATE]
 features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
 
 X_train = df_train[features]
-y_train = df_train["y_reg"]
+y_train = df_train["y"]
 
 X_test = df_test[features]
-y_test = df_test["y_reg"]
+y_test = df_test["y"]
 
 # Initialize the Random Forest regressor
 rf = RandomForestRegressor(random_state=42)

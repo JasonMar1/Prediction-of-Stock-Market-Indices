@@ -32,8 +32,7 @@ def pick_index():
 
     return index_mapping[choice]
 
-
-def load_daily_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
+def df_creation(TRAIN_START_DATE, TEST_END_DATE):
     index_name = pick_index()
     file_path = os.path.join(BASE_DIR, "index_data", indices[index_name])
 
@@ -45,45 +44,47 @@ def load_daily_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
     # Ignore all data before 1950-01-03
     df = df[df.index >= "1950-01-03"]
 
-    df = df[TRAIN_START_DATE:TEST_END_DATE]
+    df = df.loc[TRAIN_START_DATE:TEST_END_DATE]
+
+    return df
+
+
+def load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Compute Daily Log Returns
-    df["Log_Returns"] = np.log(df["Close"]) - np.log(df["Close"].shift(1))
+    df["Log_Returns"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(1))
     df["Log_Returns_Tomorrow"] = df["Log_Returns"].shift(-1)
 
     df.dropna(inplace=True)
 
     features = ["Open", "High", "Low", "Close", "Volume"]
+    log_return_columns = ["Log_Returns"]
 
-    # Extract Features & Target
-    X = df[features]
-    y = df["Log_Returns_Tomorrow"]
+    # Split the data by date
+    df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_test = df.loc[TEST_START_DATE:TEST_END_DATE]
+
+    X_train = df_train[features]
+    y_train = df_train["Log_Returns_Tomorrow"]
+
+    X_test = df_test[features]
+    y_test = df_test["Log_Returns_Tomorrow"]
 
     if standardized:
         # Standardize Features
         scaler = StandardScaler()
-        X = scaler.fit_transform(X)
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
 
-    # Convert to DataFrame
-    df_processed = pd.DataFrame(X, index=df.index, columns=features)
-    df_processed["y"] = y
+    X_train = np.hstack([X_train, df_train[log_return_columns]])
+    X_test = np.hstack([X_test, df_test[log_return_columns]])
 
-    return df_processed
+    return X_train, y_train, X_test, y_test, df_test
 
 
-def load_monthly_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
-    index_name = pick_index()
-    file_path = os.path.join(BASE_DIR, "index_data", indices[index_name])
-
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
-
-    # Ignore all data before 1950-01-03
-    df = df[df.index >= "1950-01-03"]
-
-    df = df[TRAIN_START_DATE:TEST_END_DATE]
+def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Aggregate daily data into monthly data.
     monthly_df = df.resample("ME").agg({
@@ -96,7 +97,7 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
     })
 
     # Monthly Log Returns
-    monthly_df["Log_Returns"] = np.log(monthly_df["Close"]) - np.log(monthly_df["Close"].shift(1))
+    monthly_df["Log_Returns"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(1))
     monthly_df["Log_Returns_Next_Month"] = monthly_df["Log_Returns"].shift(-1)
 
     monthly_df.dropna(inplace=True)
@@ -105,41 +106,31 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
     features = ["Close"]
     log_return_columns = ["Log_Returns"]
 
-    # Extract Features & Target
-    X = monthly_df[features]
-    y = monthly_df["Log_Returns_Next_Month"]
+    # Split the data by date
+    df_train = monthly_df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_test = monthly_df.loc[TEST_START_DATE:TEST_END_DATE]
+
+    X_train = df_train[features]
+    y_train = df_train["Log_Returns_Next_Month"]
+
+    X_test = df_test[features]
+    y_test = df_test["Log_Returns_Next_Month"]
 
     if standardized:
         if features:
             # Standardize Features
             scaler = StandardScaler()
-            X = scaler.fit_transform(X)
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
 
-    # Convert to DataFrame
-    df_processed = pd.DataFrame(X, index=monthly_df.index, columns=features)
+    X_train = np.hstack([X_train, df_train[log_return_columns]])
+    X_test = np.hstack([X_test, df_test[log_return_columns]])
 
-    if log_return_columns:
-        features += log_return_columns
-        df_processed[log_return_columns] = monthly_df[log_return_columns]
-
-    df_processed["y"] = y
-
-    return df_processed, features
+    return X_train, y_train, X_test, y_test, df_test
 
 
-def load_weekly_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
-    index_name = pick_index()
-    file_path = os.path.join(BASE_DIR, "index_data", indices[index_name])
-
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
-
-    # Ignore all data before 1950-01-03
-    df = df[df.index >= "1950-01-03"]
-
-    df = df[TRAIN_START_DATE:TEST_END_DATE]
+def load_weekly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Aggregate daily data into weekly data.
     weekly_df = df.resample("W-FRI").agg({
@@ -152,7 +143,7 @@ def load_weekly_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
     })
 
     # Weekly Log Returns
-    weekly_df["Log_Returns"] = np.log(weekly_df["Close"]) - np.log(weekly_df["Close"].shift(1))
+    weekly_df["Log_Returns"] = np.log(weekly_df["Adjusted_close"]) - np.log(weekly_df["Adjusted_close"].shift(1))
     weekly_df["Log_Returns_Next_Week"] = weekly_df["Log_Returns"].shift(-1)
 
     weekly_df.dropna(inplace=True)
@@ -160,80 +151,77 @@ def load_weekly_data(standardized, TRAIN_START_DATE, TEST_END_DATE):
     features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
     log_return_columns = ["Log_Returns"]
 
-    # Extract Features & Target
-    X = weekly_df[features]
-    y = weekly_df["Log_Returns_Next_Week"]
+    # Split the data by date
+    df_train = weekly_df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_test = weekly_df.loc[TEST_START_DATE:TEST_END_DATE]
+
+    X_train = df_train[features]
+    y_train = df_train["Log_Returns_Next_Week"]
+
+    X_test = df_test[features]
+    y_test = df_test["Log_Returns_Next_Week"]
 
     if standardized:
         if features:
             # Standardize Features
             scaler = StandardScaler()
-            X = scaler.fit_transform(X)
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
 
-    # Convert to DataFrame
-    df_processed = pd.DataFrame(X, index=weekly_df.index, columns=features)
+    X_train = np.hstack([X_train, df_train[log_return_columns]])
+    X_test = np.hstack([X_test, df_test[log_return_columns]])
 
-    if log_return_columns:
-        features += log_return_columns
-        df_processed[log_return_columns] = weekly_df[log_return_columns]
-
-    df_processed["y"] = y
-
-    return df_processed, features
+    return X_train, y_train, X_test, y_test, df_test
 
 
-def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TEST_END_DATE):
-    index_name = pick_index()
-    file_path = os.path.join(BASE_DIR, "index_data", indices[index_name])
+def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
+    # # Case 1: Compute Log Returns for different shifts
+    # max_shift = 15
+    # for i in range(1, max_shift + 1):
+    #     df[f"Log_Returns_{i}"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(i))
 
-    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
-
-    # Ignore all data before 1950-01-03
-    df = df[df.index >= "1950-01-03"]
-
-    df = df[TRAIN_START_DATE:TEST_END_DATE]
-
-    # Case 1: Compute Log Returns for different shifts
-    max_shift = 15
-    for i in range(1, max_shift + 1):
-        df[f"Log_Returns_{i}"] = np.log(df["Close"]) - np.log(df["Close"].shift(i))
-
-    # # Case 2: Compute Log Returns for 1 shift
-    # df["Log_Returns_1"] = np.log(df["Close"]) - np.log(df["Close"].shift(1))
+    # Case 2: Compute Log Returns for 1 shift
+    df["Log_Returns_1"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(1))
 
     df["Log_Returns_Tomorrow"] = df["Log_Returns_1"].shift(-1)
 
+    df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std() #Πρεπει το window να ειναι ίσο με το sequence_length?
+
     df.dropna(inplace=True)
 
-    # Case 1
-    log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
+    # # Case 1
+    # log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
 
-    # # Case 2
-    # log_return_columns = ["Log_Returns_1"]
+    # Case 2
+    log_return_columns = ["Log_Returns_1"] + ["Volatility"]
+
+    extra_features = log_return_columns
 
     # features = ['Close']
     features = []
 
-    # Extract Features & Target
-    X = df[features]
-    y = df["Log_Returns_Tomorrow"]
+    # Split the data by date
+    df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_test = df.loc[TEST_START_DATE:TEST_END_DATE]
+
+    X_train = df_train[features]
+    y_train = df_train["Log_Returns_Tomorrow"]
+
+    X_test = df_test[features]
+    y_test = df_test["Log_Returns_Tomorrow"]
 
     if features:
         if standardized:
             # Standardize Features
             scaler = StandardScaler()
-            X = scaler.fit_transform(X)
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
 
-    # Convert to DataFrame
-    df_processed = pd.DataFrame(X, index=df.index, columns=features)
 
-    if log_return_columns:
-        features += log_return_columns
-        df_processed[log_return_columns] = df[log_return_columns]
+    X_train = np.hstack([X_train, df_train[extra_features]])
+    X_test = np.hstack([X_test, df_test[extra_features]])
 
-    df_processed["y"] = y
-
-    return df_processed, features
+    features += extra_features
+    return X_train, y_train, X_test, y_test, df_test, features

@@ -5,30 +5,20 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 from torch.utils.data import TensorDataset, DataLoader
-from data_loader import load_data
+from data_loader import load_daily_data_log_returns
 from itertools import product
+
+torch.manual_seed(42)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TRAIN_START_DATE = "2000-01-01"
-TRAIN_END_DATE = "2024-01-23"
+TRAIN_START_DATE = "2000-01-05"
+TRAIN_END_DATE = "2023-01-23"
 
-TEST_START_DATE = "2024-01-24"
+TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-df_standardized = load_data(standardized=True)
-
-# Split the data by date
-df_train = df_standardized.loc[TRAIN_START_DATE:TRAIN_END_DATE]
-df_test = df_standardized.loc[TEST_START_DATE:TEST_END_DATE]
-
-features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
-
-X_train = df_train[features].values  # shape: (n_train_samples, num_features)
-y_train = df_train["y"].values  # shape: (n_train_samples,)
-
-X_test = df_test[features].values
-y_test = df_test["y"].values
+X_train, y_train, X_test, y_test, df_test, features = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
 class LSTMRegressor(nn.Module):
@@ -36,8 +26,7 @@ class LSTMRegressor(nn.Module):
         super(LSTMRegressor, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers,
-                            batch_first=True, dropout=dropout)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
@@ -50,36 +39,48 @@ class LSTMRegressor(nn.Module):
 
 
 grid_params = {
-    "hidden_size": [32, 64, 128],
-    "num_layers": [1, 2],
-    "dropout": [0.1, 0.2],
-    "learning_rate": [0.01, 0.001, 0.0005],
-    "batch_size": [32, 64],
-    "epochs": [50, 100, 200],
-    "sequence_length": [5, 10, 15]
+    "hidden_size": [32],
+    "num_layers": [2],
+    "dropout": [0.1],
+    "learning_rate": [0.001],
+    "batch_size": [64],
+    "epochs": [50],
+    "sequence_length": [10]
 }
 
+
+# grid_params = {
+#     "hidden_size": [32, 64, 128],
+#     "num_layers": [1, 2],
+#     "dropout": [0.1, 0.2],
+#     "learning_rate": [0.01, 0.001, 0.0005],
+#     "batch_size": [32, 64],
+#     "epochs": [50, 100, 200],
+#     "sequence_length": [5, 10, 15]
+# }
+
 param_combinations = list(product(*grid_params.values()))
-print(f"Total combinations to try: {len(param_combinations)}")
+print(f"Total combinations: {len(param_combinations)}")
 
 best_model = None
 best_params = None
 best_mae = float("inf")
 
-# Note: For each hyperparameter combination, we regenerate sequences using the given sequence_length.
+
+# Create sequences using current seq_length.
+def create_sequences(X, y, seq_length):
+    xs, ys = [], []
+    for i in range(len(X) - seq_length):
+        xs.append(X[i:i + seq_length])
+        ys.append(y.iloc[i + seq_length])
+    return np.array(xs), np.array(ys)
+
+
+# For each hyperparameter combination, regenerate sequences using the given sequence_length.
 for params in param_combinations:
     hidden_size, num_layers, dropout, learning_rate, batch_size, epochs, seq_length = params
+    print('-' * 100)
     print(f"\nTraining LSTM with params: {params}")
-
-
-    # Create sequences using current seq_length.
-    def create_sequences(X, y, seq_length):
-        xs, ys = [], []
-        for i in range(len(X) - seq_length):
-            xs.append(X[i:i + seq_length])
-            ys.append(y[i + seq_length])
-        return np.array(xs), np.array(ys)
-
 
     curr_train_seq, curr_train_targets = create_sequences(X_train, y_train, seq_length)
     curr_test_seq, curr_test_targets = create_sequences(X_test, y_test, seq_length)
@@ -90,18 +91,17 @@ for params in param_combinations:
     curr_test_seq = torch.tensor(curr_test_seq, dtype=torch.float32).to(device)
     curr_test_targets = torch.tensor(curr_test_targets, dtype=torch.float32).to(device)
 
-    model = LSTMRegressor(input_size=len(features),
-                          hidden_size=hidden_size,
-                          num_layers=num_layers,
-                          output_size=1,
-                          dropout=dropout).to(device)
+    model = LSTMRegressor(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
 
     criterion = nn.L1Loss()  # MAE loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Create DataLoader for training
+    # DataLoaders
     train_dataset = TensorDataset(curr_train_seq, curr_train_targets)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True) # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
+
+    test_dataset = TensorDataset(curr_test_seq, curr_test_targets)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     model.train()
     for epoch in range(epochs):
@@ -109,20 +109,19 @@ for params in param_combinations:
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
             outputs = model(batch_x)
-            loss = criterion(outputs.squeeze(), batch_y)
+
+            loss = criterion(outputs.view(-1), batch_y.view(-1))
             loss.backward()
             optimizer.step()
             epoch_losses.append(loss.item())
+
         if (epoch + 1) % 10 == 0 or epoch == 0:
             avg_loss = np.mean(epoch_losses)
             print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.6f}")
 
-    # Evaluate on current test set
     model.eval()
     predictions = []
     actuals = []
-    test_dataset = TensorDataset(curr_test_seq, curr_test_targets)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
@@ -135,11 +134,16 @@ for params in param_combinations:
     current_mae = mean_absolute_error(actuals, predictions)
     print(f"MAE for params {params}: {current_mae:.6f}")
 
+    current_rmse = root_mean_squared_error(actuals, predictions)
+    print(f"RMSE for params {params}: {current_rmse:.6f}")
+
     if current_mae < best_mae:
         best_mae = current_mae
         best_model = model
         best_params = params
 
+
+print('-' * 100)
 print(f"\nBest Model Parameters: {best_params}")
 print(f"Best MAE: {best_mae:.6f}")
 
@@ -171,7 +175,7 @@ predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
 best_rmse = root_mean_squared_error(actuals, predictions)
 
-print(f"\nFinal Best Model Evaluation:")
+print(f"\nBest Model Evaluation:")
 print(f"Test MAE: {best_mae:.6f}")
 print(f"Test RMSE: {best_rmse:.6f}")
 

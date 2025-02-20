@@ -174,7 +174,7 @@ def load_weekly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_
     return X_train, y_train, X_test, y_test, df_test
 
 
-def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
+def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # # Case 1: Compute Log Returns for different shifts
@@ -187,7 +187,7 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
 
     df["Log_Returns_Tomorrow"] = df["Log_Returns_1"].shift(-1)
 
-    df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std() #Πρεπει το window να ειναι ίσο με το sequence_length?
+    # df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std() #Πρεπει το window να ειναι ίσο με το sequence_length?
 
     df.dropna(inplace=True)
 
@@ -195,33 +195,51 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     # log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
 
     # Case 2
-    log_return_columns = ["Log_Returns_1"] + ["Volatility"]
+    # log_return_columns = ["Log_Returns_1"] + ["Volatility"]
+    log_return_columns = ["Log_Returns_1"]
 
     extra_features = log_return_columns
 
     # features = ['Close']
     features = []
+    # features = ["Open", "High", "Low", "Adjusted_close", "Volume"]
 
     # Split the data by date
     df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_valid = df.loc[VALID_START_DATE:VALID_END_DATE]
     df_test = df.loc[TEST_START_DATE:TEST_END_DATE]
+
 
     X_train = df_train[features]
     y_train = df_train["Log_Returns_Tomorrow"]
 
+    X_valid = df_valid[features]
+    y_valid = df_valid["Log_Returns_Tomorrow"]
+
     X_test = df_test[features]
     y_test = df_test["Log_Returns_Tomorrow"]
+
+
 
     if features:
         if standardized:
             # Standardize Features
             scaler = StandardScaler()
             X_train = scaler.fit_transform(X_train)
+            X_valid = scaler.transform(X_valid)
             X_test = scaler.transform(X_test)
 
 
     X_train = np.hstack([X_train, df_train[extra_features]])
+    X_valid = np.hstack([X_valid, df_valid[extra_features]])
     X_test = np.hstack([X_test, df_test[extra_features]])
 
+    print(df_valid[extra_features].tail(10))
+    print(df_valid["Log_Returns_Tomorrow"].tail(10))
+
+    print(df_test[extra_features].head())
+    print(df_test["Log_Returns_Tomorrow"].head())
+
+
     features += extra_features
-    return X_train, y_train, X_test, y_test, df_test, features
+    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features

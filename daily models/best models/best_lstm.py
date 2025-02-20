@@ -6,29 +6,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
 from torch.utils.data import TensorDataset, DataLoader
-from data_loader import load_data
+from data_loader import load_daily_data_log_returns
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 TRAIN_START_DATE = "2000-01-01"
-TRAIN_END_DATE = "2024-01-23"
+TRAIN_END_DATE = "2023-01-23"
 
-TEST_START_DATE = "2024-01-24"
+TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-df_standardized = load_data(standardized=True)
-
-# Split the data by date
-df_train = df_standardized.loc[TRAIN_START_DATE:TRAIN_END_DATE]
-df_test = df_standardized.loc[TEST_START_DATE:TEST_END_DATE]
-
-features = ["Open", "High", "Low", "Close", "Volume"]
-
-X_train = df_train[features].values  # shape: (n_train_samples, num_features)
-y_train = df_train["y"].values  # shape: (n_train_samples,)
-
-X_test = df_test[features].values
-y_test = df_test["y"].values
+X_train, y_train, X_test, y_test, df_test, features = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
 class LSTMRegressor(nn.Module):
@@ -55,14 +43,15 @@ def create_sequences(X, y, seq_length):
         ys.append(y[i + seq_length])
     return np.array(xs), np.array(ys)
 
-best_seq_length = 15
+seq_length = 15
 batch_size = None  # Set your own value
 
-X_train_seq, y_train_seq = create_sequences(X_train, y_train, best_seq_length)
-X_test_seq, y_test_seq = create_sequences(X_test, y_test, best_seq_length)
+X_train_seq, y_train_seq = create_sequences(X_train, y_train, seq_length)
+X_test_seq, y_test_seq = create_sequences(X_test, y_test, seq_length)
 
 X_train_seq = torch.tensor(X_train_seq, dtype=torch.float32).to(device)
 y_train_seq = torch.tensor(y_train_seq, dtype=torch.float32).to(device)
+
 X_test_seq = torch.tensor(X_test_seq, dtype=torch.float32).to(device)
 y_test_seq = torch.tensor(y_test_seq, dtype=torch.float32).to(device)
 
@@ -73,16 +62,12 @@ dropout = None  # Set your own value
 epochs = 200
 learning_rate = 0.0005
 
-model = LSTMRegressor(input_size=len(features),
-                      hidden_size=hidden_size,
-                      num_layers=num_layers,
-                      output_size=1,
-                      dropout=dropout).to(device)
+model = LSTMRegressor(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
 
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-# Create DataLoader for training
+# DataLoader
 train_dataset = TensorDataset(X_train_seq, y_train_seq)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -92,10 +77,12 @@ for epoch in range(epochs):
     for batch_x, batch_y in train_loader:
         optimizer.zero_grad()
         outputs = model(batch_x)
+
         loss = criterion(outputs.squeeze(), batch_y)
         loss.backward()
         optimizer.step()
         epoch_losses.append(loss.item())
+
     if (epoch + 1) % 10 == 0 or epoch == 0:
         avg_loss = np.mean(epoch_losses)
         print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.6f}")
@@ -105,8 +92,7 @@ torch.save(model, "best_lstm_model.pth")
 
 def permutation_importance(model, X_test, y_test, batch_size, feature_names, device):
     model.eval()
-    test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32).to(device),
-                                 torch.tensor(y_test, dtype=torch.float32).to(device))
+    test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32).to(device), torch.tensor(y_test, dtype=torch.float32).to(device))
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     baseline_predictions = []

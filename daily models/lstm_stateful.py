@@ -34,24 +34,34 @@ class LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
+        self.h_state = None
+        self.c_state = None
+
+
+    def reset_states(self, batch_size, device):
+        # Initializes the hidden state (h_state) and cell state (c_state) to zeros.
+        self.h_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
+        self.c_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
+
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
-        out, _ = self.lstm(x)
-        out = out[:, -1, :]  # Use output from the last time step. (flattened)
+        if self.h_state is None:
+            self.reset_states(x.size(0), x.device)
+
+        out, (self.h_state, self.c_state) = self.lstm(x, (self.h_state, self.c_state))
+        out = out[:, -1, :]  # Use output from the last time step.
         out = self.fc(out)
         return out
 
 
-grid_params = {
-    "hidden_size": [64],
-    "num_layers": [2],
-    "dropout": [0.1],
-    "learning_rate": [0.001],
-    "batch_size": [64],
-    "epochs": [20],
-    "sequence_length": [10]
-}
+# grid_params = {
+#     "hidden_size": [32],
+#     "num_layers": [2],
+#     "dropout": [0.2],
+#     "learning_rate": [0.01],
+#     "batch_size": [32],
+#     "epochs": [200],
+#     "sequence_length": [15]
+# }
 
 
 # grid_params = {
@@ -63,6 +73,17 @@ grid_params = {
 #     "epochs": [50, 100, 200],
 #     "sequence_length": [5, 10, 15]
 # }
+
+grid_params = {
+    "hidden_size": [32, 64, 128],       # Increasing hidden size gives the model more capacity to capture complex patterns.
+    "num_layers": [1, 2],               # Starting with one or two layers; deeper networks may capture more dependencies but could be harder to train.
+    "dropout": [0.0, 0.2, 0.5],         # Testing no dropout to high dropout helps find the right balance between overfitting and underfitting.
+    "learning_rate": [0.01, 0.001, 0.0005],  # A range of learning rates to see which converges best; lower rates can lead to more stable training.
+    "batch_size": [16, 32, 64],         # Smaller batch sizes often generalize better, but larger ones speed up training; experiment to see what works best.
+    "epochs": [100, 200],               # Sufficient epochs to allow convergence without overfitting.
+    "sequence_length": [10, 15, 20]     # Different sequence lengths to test how many past time steps are optimal for predicting the log returns.
+}
+
 
 param_combinations = list(product(*grid_params.values()))
 print(f"Total combinations: {len(param_combinations)}")
@@ -80,6 +101,23 @@ def create_sequences(X, y, seq_length):
         ys.append(y.iloc[i + seq_length])
     return np.array(xs), np.array(ys)
 
+def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device):
+    train_seq, train_targets = create_sequences(X_train, y_train, seq_length)
+    valid_seq, valid_targets = create_sequences(X_valid, y_valid, seq_length)
+    test_seq, test_targets = create_sequences(X_test, y_test, seq_length)
+
+    # Convert sequences to torch tensors & create the Dataloaders
+    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, drop_last=True)  # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
+                                                                                                    # Αν κάνω drop_last τότε χαλάει αρκετά η συνοχή των δεδομένων μου?
+
+    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device))
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+
+    test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device))
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+
+    return train_loader, valid_loader, test_loader
 
 def plot_losses(epochs, train_losses, valid_losses):
     plt.figure(figsize=(10, 6))
@@ -98,51 +136,32 @@ for params in param_combinations:
     print('-' * 100)
     print(f"\nTraining LSTM with params: {params}")
 
-    curr_train_seq, curr_train_targets = create_sequences(X_train, y_train, seq_length)
-    curr_valid_seq, curr_valid_targets = create_sequences(X_valid, y_valid, seq_length)
-    curr_test_seq, curr_test_targets = create_sequences(X_test, y_test, seq_length)
-
-    # Convert sequences to torch tensors.
-    curr_train_seq = torch.tensor(curr_train_seq, dtype=torch.float32).to(device)
-    curr_train_targets = torch.tensor(curr_train_targets, dtype=torch.float32).to(device)
-
-    curr_valid_seq = torch.tensor(curr_valid_seq, dtype=torch.float32).to(device)
-    curr_valid_targets = torch.tensor(curr_valid_targets, dtype=torch.float32).to(device)
-
-    curr_test_seq = torch.tensor(curr_test_seq, dtype=torch.float32).to(device)
-    curr_test_targets = torch.tensor(curr_test_targets, dtype=torch.float32).to(device)
-
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
-
     criterion = nn.L1Loss()  # MAE loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # DataLoaders
-    train_dataset = TensorDataset(curr_train_seq, curr_train_targets)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False) # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
-
-    valid_dataset = TensorDataset(curr_valid_seq, curr_valid_targets)
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-
-    test_dataset = TensorDataset(curr_test_seq, curr_test_targets)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device)
     train_losses = []
     valid_losses = []
 
     for epoch in range(epochs):
         model.train()
-        batch_losses = []
+        train_loss = []
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
-            outputs = model(batch_x)
 
+            outputs = model(batch_x)
             loss = criterion(outputs.view(-1), batch_y.view(-1))
+
             loss.backward()
             optimizer.step()
-            batch_losses.append(loss.item())
+            train_loss.append(loss.item())
 
-        avg_train_loss = np.mean(batch_losses)
+            # Detach the states to prevent backpropagation through the entire history
+            model.h_state = model.h_state.detach()
+            model.c_state = model.c_state.detach()
+
+        avg_train_loss = np.mean(train_loss)
         train_losses.append(avg_train_loss)
 
         # Compute validation loss
@@ -204,9 +223,9 @@ final_test_targets = torch.tensor(final_test_targets, dtype=torch.float32).to(de
 best_model.eval()
 predictions = []
 actuals = []
+
 final_test_dataset = TensorDataset(final_test_seq, final_test_targets)
-final_test_loader = DataLoader(final_test_dataset, batch_size=best_params[4],
-                               shuffle=False)  # best_params[4] is best batch_size
+final_test_loader = DataLoader(final_test_dataset, batch_size=best_params[4], shuffle=False, drop_last=True)  # best_params[4] is best batch_size
 
 with torch.no_grad():
     for batch_x, batch_y in final_test_loader:
@@ -222,11 +241,8 @@ print(f"\nBest Model Evaluation:")
 print(f"Test MAE: {best_mae:.6f}")
 print(f"Test RMSE: {best_rmse:.6f}")
 
-dates = df_test.index[best_seq_length:]
-results = pd.DataFrame({
-    "Predicted_Log_Return": predictions,
-    "Actual_Log_Return": actuals
-}, index=dates)
+dates = df_test.index[best_seq_length:best_seq_length + len(predictions)]
+results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals}, index=dates)
 
 print("\nSample Predictions:")
-print(results.head(30))
+print(results.head(10))

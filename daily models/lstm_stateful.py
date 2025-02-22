@@ -34,18 +34,13 @@ class LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
-        self.h_state = None
-        self.c_state = None
-
-
     def reset_states(self, batch_size, device):
         # Hidden state and cell state to zeros.
         self.h_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
         self.c_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
 
     def forward(self, x):
-        if self.h_state is None and self.c_state is None:
-            self.reset_states(x.size(0), x.device)
+        self.reset_states(x.size(0), x.device)
 
         out, (self.h_state, self.c_state) = self.lstm(x, (self.h_state, self.c_state))
         out = out[:, -1, :]  # Use the output from the last time step.
@@ -53,26 +48,26 @@ class LSTM(nn.Module):
         return out
 
 
-# grid_params = {
-#     "hidden_size": [64],
-#     "num_layers": [2],
-#     "dropout": [0.0],
-#     "learning_rate": [0.0005],
-#     "batch_size": [64],
-#     "epochs": [1000],
-#     "sequence_length": [20]
-# }
-
-#OPTUNA
 grid_params = {
     "hidden_size": [64],
-    "num_layers": [3],
-    "dropout": [0.18246],
-    "learning_rate": [0.0004078],
+    "num_layers": [2],
+    "dropout": [0.0],
+    "learning_rate": [0.0005],
     "batch_size": [64],
     "epochs": [100],
-    "sequence_length": [10]
+    "sequence_length": [20]
 }
+
+# #OPTUNA
+# grid_params = {
+#     "hidden_size": [64],
+#     "num_layers": [3],
+#     "dropout": [0.18246],
+#     "learning_rate": [0.0004078],
+#     "batch_size": [64],
+#     "epochs": [100],
+#     "sequence_length": [10]
+# }
 
 
 # grid_params = {
@@ -108,14 +103,13 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_leng
 
     # Convert the sequences, targets to torch tensors & create the Dataloaders
     train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)  # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
-                                                                                                    # Αν κάνω drop_last τότε χαλάει αρκετά η συνοχή των δεδομένων μου?
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device))
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
     test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device))
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, valid_loader, test_loader
 
@@ -149,16 +143,12 @@ for params in param_combinations:
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
 
-            outputs = model(batch_x)
+            outputs = model(batch_x) # batch_x.shape = (batch_size, seq_length, features)
             loss = criterion(outputs.view(-1), batch_y.view(-1))
 
             loss.backward()
             optimizer.step()
             train_loss.append(loss.item())
-
-            # Detach the states to prevent backpropagation through the entire dataset
-            model.h_state = model.h_state.detach()
-            model.c_state = model.c_state.detach()
 
         avg_train_loss = np.mean(train_loss)
         train_losses.append(avg_train_loss)
@@ -220,7 +210,7 @@ predictions = []
 actuals = []
 
 final_test_dataset = TensorDataset(final_test_seq, final_test_targets)
-final_test_loader = DataLoader(final_test_dataset, batch_size=best_params[4], shuffle=False, drop_last=True)  # best_params[4] = best batch_size
+final_test_loader = DataLoader(final_test_dataset, batch_size=best_params[4], shuffle=False)  # best_params[4] = best batch_size
 
 with torch.no_grad():
     for batch_x, batch_y in final_test_loader:

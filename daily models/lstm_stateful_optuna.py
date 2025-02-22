@@ -31,17 +31,13 @@ class LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
-        self.h_state = None
-        self.c_state = None
-
     def reset_states(self, batch_size, device):
         # Hidden state and cell state to zeros.
         self.h_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
         self.c_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
 
     def forward(self, x):
-        if self.h_state is None and self.c_state is None:
-            self.reset_states(x.size(0), x.device)
+        self.reset_states(x.size(0), x.device)
 
         out, (self.h_state, self.c_state) = self.lstm(x, (self.h_state, self.c_state))
         out = out[:, -1, :]  # Use the output from the last time step.
@@ -92,22 +88,21 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, seq_length, batch_size, 
 
     # Convert the sequences, targets to torch tensors & create the Dataloaders
     train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, drop_last=True)  # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
-                                                                                                    # Αν κάνω drop_last τότε χαλάει αρκετά η συνοχή των δεδομένων μου?
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device))
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, valid_loader
 
 
 def objective(trial):
-    hidden_size = trial.suggest_categorical("hidden_size", [32, 64, 128])
-    num_layers = trial.suggest_int("num_layers", 1, 3)
-    dropout = trial.suggest_float("dropout", 0.0, 0.5)
-    learning_rate = trial.suggest_loguniform("learning_rate", 1e-4, 1e-2)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
-    seq_length = trial.suggest_categorical("sequence_length", [10, 15, 20])
+    hidden_size = trial.suggest_int("hidden_size", 32, 256, log=True)
+    num_layers = trial.suggest_int("num_layers", 1, 4)
+    dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
+    learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
+    batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
+    seq_length = trial.suggest_int("sequence_length", 10, 50, step=5)
     epochs = 100
     patience = 10
 

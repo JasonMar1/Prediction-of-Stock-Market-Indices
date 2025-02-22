@@ -174,35 +174,53 @@ def load_weekly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_
     return X_train, y_train, X_test, y_test, df_test
 
 
+def compute_RSI(df, period=14):
+    delta = df["Adjusted_close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+
+    avg_gain = gain.rolling(window=period, min_periods=period).mean()
+    avg_loss = loss.rolling(window=period, min_periods=period).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+
 def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
-    # # Case 1: Compute Log Returns for different shifts
+    """Case 1: Compute Log Returns for different shifts"""
     # max_shift = 15
     # for i in range(1, max_shift + 1):
     #     df[f"Log_Returns_{i}"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(i))
 
-    # Case 2: Compute Log Returns for 1 shift
+    """Case 2: Compute Log Returns for 1 shift"""
     df["Log_Returns_1"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(1))
 
     df["Log_Returns_Tomorrow"] = df["Log_Returns_1"].shift(-1)
 
-    # df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std() #Πρεπει το window να ειναι ίσο με το sequence_length?
+    """ Extra Features"""
+    df["Log_Returns_5"] = df["Log_Returns_1"].shift(5)
+    df["Log_Returns_10"] = df["Log_Returns_1"].shift(10)
+    df["Log_Returns_20"] = df["Log_Returns_1"].shift(20)
+
+    # df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std()  # Θεωρείται data-leakage αν δεν κοπεί πληροφορία στις πρώτες μέρες του validation, test set?
+    df["RSI_14"] = compute_RSI(df, period=14)
 
     df.dropna(inplace=True)
 
-    # # Case 1
+    """Case 1"""
     # log_return_columns = [f"Log_Returns_{i}" for i in range(1, max_shift + 1)]
 
-    # Case 2
-    # log_return_columns = ["Log_Returns_1"] + ["Volatility"]
+    """Case 2"""
     log_return_columns = ["Log_Returns_1"]
 
-    extra_features = log_return_columns
-
+    """ Extra Features"""
+    extra_features = log_return_columns + ["Log_Returns_5", "Log_Returns_10", "Log_Returns_20", "RSI_14"]
     # features = ['Close']
-    features = []
-    # features = ["Open", "High", "Low", "Adjusted_close", "Volume"]
+    # features = []
+    features = ["Open", "High", "Low", "Adjusted_close", "Volume"]
 
     # Split the data by date
     df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
@@ -234,11 +252,14 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     X_valid = np.hstack([X_valid, df_valid[extra_features]])
     X_test = np.hstack([X_test, df_test[extra_features]])
 
-    print(df_valid[extra_features].tail(10))
-    print(df_valid["Log_Returns_Tomorrow"].tail(10))
 
-    print(df_test[extra_features].head())
-    print(df_test["Log_Returns_Tomorrow"].head())
+    # print(df_train[extra_features].head(2))
+    #
+    # print(df_valid[extra_features].tail(10))
+    # print(df_valid["Log_Returns_Tomorrow"].tail(10))
+    #
+    # print(df_test[extra_features].head())
+    # print(df_test["Log_Returns_Tomorrow"].head())
 
 
     features += extra_features

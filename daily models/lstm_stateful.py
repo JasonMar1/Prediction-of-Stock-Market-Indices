@@ -39,50 +39,51 @@ class LSTM(nn.Module):
 
 
     def reset_states(self, batch_size, device):
-        # Initializes the hidden state (h_state) and cell state (c_state) to zeros.
+        # Hidden state and cell state to zeros.
         self.h_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
         self.c_state = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
 
     def forward(self, x):
-        if self.h_state is None:
+        if self.h_state is None and self.c_state is None:
             self.reset_states(x.size(0), x.device)
 
         out, (self.h_state, self.c_state) = self.lstm(x, (self.h_state, self.c_state))
-        out = out[:, -1, :]  # Use output from the last time step.
+        out = out[:, -1, :]  # Use the output from the last time step.
         out = self.fc(out)
         return out
 
 
 # grid_params = {
-#     "hidden_size": [32],
+#     "hidden_size": [64],
 #     "num_layers": [2],
-#     "dropout": [0.2],
-#     "learning_rate": [0.01],
-#     "batch_size": [32],
-#     "epochs": [200],
-#     "sequence_length": [15]
+#     "dropout": [0.0],
+#     "learning_rate": [0.0005],
+#     "batch_size": [64],
+#     "epochs": [1000],
+#     "sequence_length": [20]
 # }
+
+#OPTUNA
+grid_params = {
+    "hidden_size": [64],
+    "num_layers": [3],
+    "dropout": [0.18246],
+    "learning_rate": [0.0004078],
+    "batch_size": [64],
+    "epochs": [100],
+    "sequence_length": [10]
+}
 
 
 # grid_params = {
 #     "hidden_size": [32, 64, 128],
 #     "num_layers": [1, 2],
-#     "dropout": [0.1, 0.2],
+#     "dropout": [0.0, 0.2, 0.5],
 #     "learning_rate": [0.01, 0.001, 0.0005],
-#     "batch_size": [32, 64],
-#     "epochs": [50, 100, 200],
-#     "sequence_length": [5, 10, 15]
+#     "batch_size": [16, 32, 64],
+#     "epochs": [100, 200],
+#     "sequence_length": [10, 15, 20]
 # }
-
-grid_params = {
-    "hidden_size": [32, 64, 128],       # Increasing hidden size gives the model more capacity to capture complex patterns.
-    "num_layers": [1, 2],               # Starting with one or two layers; deeper networks may capture more dependencies but could be harder to train.
-    "dropout": [0.0, 0.2, 0.5],         # Testing no dropout to high dropout helps find the right balance between overfitting and underfitting.
-    "learning_rate": [0.01, 0.001, 0.0005],  # A range of learning rates to see which converges best; lower rates can lead to more stable training.
-    "batch_size": [16, 32, 64],         # Smaller batch sizes often generalize better, but larger ones speed up training; experiment to see what works best.
-    "epochs": [100, 200],               # Sufficient epochs to allow convergence without overfitting.
-    "sequence_length": [10, 15, 20]     # Different sequence lengths to test how many past time steps are optimal for predicting the log returns.
-}
 
 
 param_combinations = list(product(*grid_params.values()))
@@ -93,7 +94,6 @@ best_params = None
 best_mae = float("inf")
 
 
-# Create sequences using current seq_length.
 def create_sequences(X, y, seq_length):
     xs, ys = [], []
     for i in range(len(X) - seq_length):
@@ -106,9 +106,9 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_leng
     valid_seq, valid_targets = create_sequences(X_valid, y_valid, seq_length)
     test_seq, test_targets = create_sequences(X_test, y_test, seq_length)
 
-    # Convert sequences to torch tensors & create the Dataloaders
+    # Convert the sequences, targets to torch tensors & create the Dataloaders
     train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, drop_last=True)  # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)  # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
                                                                                                     # Αν κάνω drop_last τότε χαλάει αρκετά η συνοχή των δεδομένων μου?
 
     valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device))
@@ -130,7 +130,6 @@ def plot_losses(epochs, train_losses, valid_losses):
     plt.grid(True)
     plt.show()
 
-# For each hyperparameter combination, regenerate sequences using the given sequence_length.
 for params in param_combinations:
     hidden_size, num_layers, dropout, learning_rate, batch_size, epochs, seq_length = params
     print('-' * 100)
@@ -157,14 +156,13 @@ for params in param_combinations:
             optimizer.step()
             train_loss.append(loss.item())
 
-            # Detach the states to prevent backpropagation through the entire history
+            # Detach the states to prevent backpropagation through the entire dataset
             model.h_state = model.h_state.detach()
             model.c_state = model.c_state.detach()
 
         avg_train_loss = np.mean(train_loss)
         train_losses.append(avg_train_loss)
 
-        # Compute validation loss
         model.eval()
         valid_loss = []
         with torch.no_grad():
@@ -209,23 +207,20 @@ print('-' * 100)
 print(f"\nBest Model Parameters: {best_params}")
 print(f"Best MAE: {best_mae:.6f}")
 
-# Use the best sequence length from the best parameters
-best_seq_length = best_params[-1]
-# Regenerate sequences for final evaluation.
-final_train_seq, final_train_targets = create_sequences(X_train, y_train, best_seq_length)
+
+best_seq_length = best_params[-1] # Best sequence length from the best_params
+
 final_test_seq, final_test_targets = create_sequences(X_test, y_test, best_seq_length)
 
-# Convert final test sequences.
 final_test_seq = torch.tensor(final_test_seq, dtype=torch.float32).to(device)
 final_test_targets = torch.tensor(final_test_targets, dtype=torch.float32).to(device)
 
-# Evaluate on final test set.
 best_model.eval()
 predictions = []
 actuals = []
 
 final_test_dataset = TensorDataset(final_test_seq, final_test_targets)
-final_test_loader = DataLoader(final_test_dataset, batch_size=best_params[4], shuffle=False, drop_last=True)  # best_params[4] is best batch_size
+final_test_loader = DataLoader(final_test_dataset, batch_size=best_params[4], shuffle=False, drop_last=True)  # best_params[4] = best batch_size
 
 with torch.no_grad():
     for batch_x, batch_y in final_test_loader:

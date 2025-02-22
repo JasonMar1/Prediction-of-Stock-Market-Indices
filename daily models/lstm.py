@@ -37,8 +37,9 @@ class LSTM(nn.Module):
     def forward(self, x):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
-        out, _ = self.lstm(x)
-        out = out[:, -1, :]  # Use output from the last time step. (flattened)
+
+        out, _ = self.lstm(x, (h0, c0))
+        out = out[:, -1, :]  # Use the output from the last time step
         out = self.fc(out)
         return out
 
@@ -46,22 +47,22 @@ class LSTM(nn.Module):
 grid_params = {
     "hidden_size": [64],
     "num_layers": [2],
-    "dropout": [0.1],
-    "learning_rate": [0.001],
+    "dropout": [0.0],
+    "learning_rate": [0.0005],
     "batch_size": [64],
-    "epochs": [20],
-    "sequence_length": [10]
+    "epochs": [100],
+    "sequence_length": [20]
 }
 
 
 # grid_params = {
 #     "hidden_size": [32, 64, 128],
 #     "num_layers": [1, 2],
-#     "dropout": [0.1, 0.2],
+#     "dropout": [0.0, 0.2, 0.5],
 #     "learning_rate": [0.01, 0.001, 0.0005],
-#     "batch_size": [32, 64],
-#     "epochs": [50, 100, 200],
-#     "sequence_length": [5, 10, 15]
+#     "batch_size": [16, 32, 64],
+#     "epochs": [100, 200],
+#     "sequence_length": [10, 15, 20]
 # }
 
 param_combinations = list(product(*grid_params.values()))
@@ -72,13 +73,31 @@ best_params = None
 best_mae = float("inf")
 
 
-# Create sequences using current seq_length.
 def create_sequences(X, y, seq_length):
     xs, ys = [], []
     for i in range(len(X) - seq_length):
         xs.append(X[i:i + seq_length])
         ys.append(y.iloc[i + seq_length])
     return np.array(xs), np.array(ys)
+
+
+def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device):
+    train_seq, train_targets = create_sequences(X_train, y_train, seq_length)
+    valid_seq, valid_targets = create_sequences(X_valid, y_valid, seq_length)
+    test_seq, test_targets = create_sequences(X_test, y_test, seq_length)
+
+    # Convert sequences to torch tensors & create the Dataloaders
+    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, drop_last=True)  # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
+                                                                                                    # Αν κάνω drop_last τότε χαλάει αρκετά η συνοχή των δεδομένων μου?
+
+    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device))
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+
+    test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device))
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+
+    return train_loader, valid_loader, test_loader
 
 
 def plot_losses(epochs, train_losses, valid_losses):
@@ -98,35 +117,11 @@ for params in param_combinations:
     print('-' * 100)
     print(f"\nTraining LSTM with params: {params}")
 
-    curr_train_seq, curr_train_targets = create_sequences(X_train, y_train, seq_length)
-    curr_valid_seq, curr_valid_targets = create_sequences(X_valid, y_valid, seq_length)
-    curr_test_seq, curr_test_targets = create_sequences(X_test, y_test, seq_length)
-
-    # Convert sequences to torch tensors.
-    curr_train_seq = torch.tensor(curr_train_seq, dtype=torch.float32).to(device)
-    curr_train_targets = torch.tensor(curr_train_targets, dtype=torch.float32).to(device)
-
-    curr_valid_seq = torch.tensor(curr_valid_seq, dtype=torch.float32).to(device)
-    curr_valid_targets = torch.tensor(curr_valid_targets, dtype=torch.float32).to(device)
-
-    curr_test_seq = torch.tensor(curr_test_seq, dtype=torch.float32).to(device)
-    curr_test_targets = torch.tensor(curr_test_targets, dtype=torch.float32).to(device)
-
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
-
     criterion = nn.L1Loss()  # MAE loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # DataLoaders
-    train_dataset = TensorDataset(curr_train_seq, curr_train_targets)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False) # Επηρεάζεται το αποτέλεσμα αν κάνω Shuffle?
-
-    valid_dataset = TensorDataset(curr_valid_seq, curr_valid_targets)
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-
-    test_dataset = TensorDataset(curr_test_seq, curr_test_targets)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device)
     train_losses = []
     valid_losses = []
 
@@ -229,4 +224,4 @@ results = pd.DataFrame({
 }, index=dates)
 
 print("\nSample Predictions:")
-print(results.head(30))
+print(results.head(10))

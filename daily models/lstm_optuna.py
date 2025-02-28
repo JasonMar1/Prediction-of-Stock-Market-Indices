@@ -4,7 +4,6 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 from data_loader import load_daily_data_log_returns
-from itertools import product
 import optuna
 
 torch.manual_seed(42)
@@ -43,35 +42,6 @@ class LSTM(nn.Module):
         out = out[:, -1, :]  # Use the output from the last time step.
         out = self.fc(out)
         return out
-
-
-grid_params = {
-    "hidden_size": [64],
-    "num_layers": [2],
-    "dropout": [0.0],
-    "learning_rate": [0.0005],
-    "batch_size": [64],
-    "epochs": [1000],
-    "sequence_length": [20]
-}
-
-# grid_params = {
-#     "hidden_size": [32, 64, 128],
-#     "num_layers": [1, 2],
-#     "dropout": [0.0, 0.2, 0.5],
-#     "learning_rate": [0.01, 0.001, 0.0005],
-#     "batch_size": [16, 32, 64],
-#     "epochs": [100, 200],
-#     "sequence_length": [10, 15, 20]
-# }
-
-
-param_combinations = list(product(*grid_params.values()))
-print(f"Total combinations: {len(param_combinations)}")
-
-best_model = None
-best_params = None
-best_mae = float("inf")
 
 
 def create_sequences(X, y, seq_length):
@@ -119,23 +89,22 @@ def objective(trial):
         model.train()
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
-            outputs = model(batch_x)
+
+            outputs = model(batch_x)  # batch_x.shape = (batch_size, seq_length, num_features)
             loss = criterion(outputs.view(-1), batch_y.view(-1))
+
             loss.backward()
             optimizer.step()
 
-            # Detach states to avoid backprop through entire history
-            model.h_state = model.h_state.detach()
-            model.c_state = model.c_state.detach()
-
         model.eval()
-        valid_losses = []
+        valid_loss = []
         with torch.no_grad():
             for batch_x, batch_y in valid_loader:
                 outputs = model(batch_x)
                 loss = criterion(outputs.view(-1), batch_y.view(-1))
-                valid_losses.append(loss.item())
-        avg_valid_loss = np.mean(valid_losses)
+                valid_loss.append(loss.item())
+
+        avg_valid_loss = np.mean(valid_loss)
 
 
         # Optuna pruning (stops bad trials early)
@@ -157,7 +126,7 @@ def objective(trial):
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=100)
+study.optimize(objective, n_trials=2000)
 
 print("Best hyperparameters:")
 print(study.best_trial)

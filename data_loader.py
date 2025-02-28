@@ -30,6 +30,7 @@ def pick_index():
     if choice not in index_mapping:
         raise ValueError(f"Invalid choice: {choice}. Please select a valid letter.")
 
+    print(f'Selected index: {index_mapping[choice]}')
     return index_mapping[choice]
 
 def df_creation(TRAIN_START_DATE, TEST_END_DATE):
@@ -188,8 +189,10 @@ def compute_RSI(df, period=14):
 
 
 def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
     log_return_columns = []
+
+    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
+
     """Case 1: Compute Log Returns for different shifts"""
     # max_shift = 15
     # for i in range(1, max_shift + 1):
@@ -201,9 +204,9 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     df["Log_Returns_Tomorrow"] = df["Log_Returns_1"].shift(-1)
 
     """ Extra Features"""
-    df["Log_Returns_5"] = df["Log_Returns_1"].shift(5)
-    df["Log_Returns_10"] = df["Log_Returns_1"].shift(10)
-    df["Log_Returns_20"] = df["Log_Returns_1"].shift(20)
+    df["Log_Returns_5"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(5))
+    df["Log_Returns_10"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(10))
+    df["Log_Returns_20"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(20))
     log_return_columns += ["Log_Returns_5", "Log_Returns_10", "Log_Returns_20"]
 
     df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std()  # Θεωρείται data-leakage αν δεν κοπεί πληροφορία στις πρώτες μέρες του validation, test set?
@@ -222,8 +225,8 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
 
     """Features"""
     # features = ['Close']
-    features = []
-    # features = ["Open", "High", "Low", "Adjusted_close", "Volume"]
+    # features = []
+    features = ["Open", "High", "Low", "Adjusted_close", "Volume"]
 
     # Split the data by date
     df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
@@ -253,6 +256,7 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     answer = input('\nStandardize the extra features? (y/n): ').strip().lower()
     if answer  == 'y':
         print('yes')
+
         scaler_extra = StandardScaler()
         X_train_extra = scaler_extra.fit_transform(df_train[extra_features])
         X_valid_extra = scaler_extra.transform(df_valid[extra_features])
@@ -270,7 +274,8 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
 
         features += extra_features + leftover_features
 
-    else:
+    elif answer == 'n':
+        print('no')
         extra_features += log_return_columns
         X_train = np.hstack([X_train, df_train[extra_features]])
         X_valid = np.hstack([X_valid, df_valid[extra_features]])

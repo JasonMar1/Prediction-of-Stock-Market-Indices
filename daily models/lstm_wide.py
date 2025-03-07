@@ -35,7 +35,7 @@ def create_sequences(X, y, seq_length):
     xs, ys = [], []
     for i in range(len(X) - seq_length):
         xs.append(X[i:i + seq_length])
-        ys.append(y[i + seq_length])
+        ys.append(y.iloc[i + seq_length])
     return np.array(xs), np.array(ys)
 
 
@@ -93,13 +93,13 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lst
 # epochs = 100
 # sequence_length = 50
 
-hidden_size = 48
+hidden_size = 340
 num_layers = None  # Set your own value
-dropout = None  # Set your own value
-learning_rate = 0.001636693769073419
+dropout = 0.15000000000000002
+learning_rate = 0.0045622646026526196
 batch_size = None  # Set your own value
-epochs = 100
-sequence_length = 50
+epochs = 200
+sequence_length = 60
 
 
 print('-' * 100)

@@ -84,11 +84,19 @@ TEST_END_DATE = "2025-01-24"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-#OPTUNA
-hidden_size = 53
-num_layers = 3
-dropout = 0.1
-learning_rate = 0.0001476
+# #OPTUNA
+# hidden_size = 53
+# num_layers = 3
+# dropout = 0.1
+# learning_rate = 0.0001476
+# batch_size = None  # Set your own value
+# epochs = 100
+# sequence_length = 50
+
+hidden_size = 48
+num_layers = None  # Set your own value
+dropout = None  # Set your own value
+learning_rate = 0.001636693769073419
 batch_size = None  # Set your own value
 epochs = 100
 sequence_length = 50

@@ -82,22 +82,23 @@ def long_lstm_load_multiple_indices(standardized, TRAIN_START_DATE, TRAIN_END_DA
         X_train, y_train, X_valid, y_valid, X_test, y_test, df_train, df_valid, df_test, features = long_lstm_load_daily_data(index_name, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
         # Convert everything to DataFrames to enable date alignment
-        X_train, y_train = pd.DataFrame(X_train, index=df_train.loc[TRAIN_START_DATE:TRAIN_END_DATE].index), pd.DataFrame(y_train, index=df_train.loc[TRAIN_START_DATE:TRAIN_END_DATE].index)
+        X_train, y_train = pd.DataFrame(X_train, index=df_train.loc[TRAIN_START_DATE:TRAIN_END_DATE].index),pd.DataFrame(y_train, index=df_train.loc[TRAIN_START_DATE:TRAIN_END_DATE].index)
         X_valid, y_valid = pd.DataFrame(X_valid, index=df_valid.loc[VALID_START_DATE:VALID_END_DATE].index), pd.DataFrame(y_valid, index=df_valid.loc[VALID_START_DATE:VALID_END_DATE].index)
         X_test, y_test = pd.DataFrame(X_test, index=df_test.loc[TEST_START_DATE:TEST_END_DATE].index), pd.DataFrame(y_test, index=df_test.loc[TEST_START_DATE:TEST_END_DATE].index)
 
         # Store the individual datasets
         all_X_train.append(X_train)
         all_y_train.append(y_train)
+
         all_X_valid.append(X_valid)
         all_y_valid.append(y_valid)
+
         all_X_test.append(X_test)
         all_y_test.append(y_test)
 
         dfs_test.append(df_test)
 
-    #  Merge all df_test DataFrames into a single DataFrame sorted by date
-    df_test_combined = pd.concat(dfs_test, axis=0).sort_index()
+    df_test_combined = pd.concat(dfs_test, axis=0).sort_index()  # Merge all the df_test DataFrames into a single DataFrame, sorted by date
 
     return all_X_train, all_y_train, all_X_valid, all_y_valid, all_X_test, all_y_test, df_test_combined, features
 

@@ -54,6 +54,15 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
     df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std()
     df["RSI_14"] = compute_RSI(df, period=14)
 
+    df["SMA_5"] = df["Adjusted_close"].rolling(window=5).mean()
+    df["SMA_20"] = df["Adjusted_close"].rolling(window=20).mean()
+    df["SMA_50"] = df["Adjusted_close"].rolling(window=50).mean()
+
+    df["EMA_10"] = df["Adjusted_close"].ewm(span=10, adjust=False).mean()
+    df["EMA_50"] = df["Adjusted_close"].ewm(span=50, adjust=False).mean()
+
+    df["MA_Crossover"] = df["SMA_5"] > df["SMA_20"]
+
     df.dropna(inplace=True)
 
     return df
@@ -100,7 +109,6 @@ def wide_lstm_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VA
         X_train = scaler.fit_transform(X_train)
         X_valid = scaler.transform(X_valid)
         X_test = scaler.transform(X_test)
-
 
     return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, feature_columns
 

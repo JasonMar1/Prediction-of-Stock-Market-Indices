@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 from torch.utils.data import TensorDataset, DataLoader
-from data_loader_wide import wide_lstm_load_daily_data
+from data_loader_long import long_lstm_load_multiple_indices, combine_and_sort_data
 import matplotlib.pyplot as plt
 
 
@@ -81,8 +81,10 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lstm_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test, df_test, features_set = long_lstm_load_multiple_indices(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
+# Align and Sort Data
+X_train, y_train, X_valid, y_valid, X_test, y_test = combine_and_sort_data(combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test)
 
 # #OPTUNA
 # hidden_size = 53
@@ -104,7 +106,7 @@ sequence_length = 60
 
 print('-' * 100)
 
-model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=4, dropout=dropout).to(device)
+model = LSTM(input_size=len(features_set), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -152,7 +154,7 @@ with torch.no_grad():
     for batch_x, batch_y in test_loader:
         outputs = model(batch_x)
         predictions.append(outputs.squeeze().cpu().numpy())
-        actuals.append(batch_y.cpu().numpy())
+        actuals.append(batch_y.squeeze().cpu().numpy())
 
 predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
@@ -166,8 +168,7 @@ print(f"RMSE: {rmse_loss:.6f}")
 
 
 dates = df_test.index[sequence_length:]
-results = pd.DataFrame(predictions, index=dates, columns=["Predicted_DJA", "Predicted_GSPC", "Predicted_IXIC", "Predicted_NYA"])
-results[["Actual_DJA", "Actual_GSPC", "Actual_IXIC", "Actual_NYA"]] = actuals
+results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals}, index=dates)
 
 print("\nSample Predictions:")
 print(results.head(10))

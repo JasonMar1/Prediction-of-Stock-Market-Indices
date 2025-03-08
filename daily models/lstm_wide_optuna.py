@@ -10,7 +10,7 @@ torch.manual_seed(42)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TRAIN_START_DATE = "2000-01-01"
+TRAIN_START_DATE = "2006-01-01"
 TRAIN_END_DATE = "2019-12-31"
 
 VALID_START_DATE = "2020-01-01"
@@ -48,7 +48,7 @@ def create_sequences(X, y, seq_length):
     xs, ys = [], []
     for i in range(len(X) - seq_length):
         xs.append(X[i:i + seq_length])
-        ys.append(y[i + seq_length])
+        ys.append(y.iloc[i + seq_length])
     return np.array(xs), np.array(ys)
 
 

@@ -93,12 +93,12 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lst
 # epochs = 100
 # sequence_length = 50
 
-hidden_size = 144
-num_layers = None  # Set your own value
-dropout = None  # Set your own value
-learning_rate = 0.00209581706419062
+hidden_size = 72
+num_layers = 3
+dropout = None  # Set your own value5
+learning_rate = 0.0031934772444681975
 batch_size = None  # Set your own value
-epochs = 400
+epochs = 100
 sequence_length = 60
 
 

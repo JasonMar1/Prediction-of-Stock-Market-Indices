@@ -31,27 +31,29 @@ class LSTM(nn.Module):
         return out
 
 
-def create_sequences(X, y, seq_length):
-    xs, ys = [], []
+def create_sequences(X, y, index_labels, seq_length):
+    xs, ys, indices = [], [], []
     for i in range(len(X) - seq_length):
         xs.append(X[i:i + seq_length])
         ys.append(y.iloc[i + seq_length])
-    return np.array(xs), np.array(ys)
+        indices.append(index_labels[i + seq_length])  # Store the corresponding index label
+    return np.array(xs), np.array(ys), np.array(indices)
 
 
-def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device):
-    train_seq, train_targets = create_sequences(X_train, y_train, seq_length)
-    valid_seq, valid_targets = create_sequences(X_valid, y_valid, seq_length)
-    test_seq, test_targets = create_sequences(X_test, y_test, seq_length)
+def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, seq_length, batch_size, device):
+    train_seq, train_targets, train_indices  = create_sequences(X_train, y_train, index_train, seq_length)
+    valid_seq, valid_targets, valid_indices = create_sequences(X_valid, y_valid, index_valid, seq_length)
+    test_seq, test_targets, test_indices = create_sequences(X_test, y_test, index_test, seq_length)
 
     # Convert the sequences, targets to torch tensors & create the Dataloaders
-    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
+    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device)), torch.tensor(train_indices, dtype=torch.long).to(device)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device))
+    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device)), torch.tensor(valid_indices, dtype=torch.long).to(device)
+
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
-    test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device))
+    test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device)), torch.tensor(test_indices, dtype=torch.long).to(device)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, valid_loader, test_loader

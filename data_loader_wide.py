@@ -7,9 +7,6 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-
-""" WIDE LSTM IMPLEMENTATION """
-
 selected_indices = {
     "A": "DJA",  # Dow Jones Industrial Average
     "C": "GSPC",  # S&P 500
@@ -85,8 +82,8 @@ def wide_lstm_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VA
     df_combined = pd.concat(dfs.values(), axis=1) # Combine the 4 dataframes into one
 
     excluded_columns = ["Log_Returns_Tomorrow", "Open", "High", "Low", "Adjusted_close", "Volume"]
+
     feature_columns = [col for col in df_combined.columns if not any(column in col for column in excluded_columns)]
-    # feature_columns = [col for col in df_combined.columns if "Log_Returns_Tomorrow" not in col]
     target_columns = [col for col in df_combined.columns if "Log_Returns_Tomorrow" in col]
 
     # Split the data by date

@@ -276,6 +276,7 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
 
     elif answer == 'n':
         print('no')
+
         extra_features += log_return_columns
         X_train = np.hstack([X_train, df_train[extra_features]])
         X_valid = np.hstack([X_valid, df_valid[extra_features]])

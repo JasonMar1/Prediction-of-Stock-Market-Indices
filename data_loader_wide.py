@@ -81,7 +81,8 @@ def wide_lstm_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VA
 
     df_combined = pd.concat(dfs.values(), axis=1) # Combine the 4 dataframes into one
 
-    excluded_columns = ["Log_Returns_Tomorrow", "Open", "High", "Low", "Adjusted_close", "Volume"]
+    # excluded_columns = ["Log_Returns_Tomorrow", "Open", "High", "Low", "Adjusted_close", "Volume"]
+    excluded_columns = ["Log_Returns_Tomorrow"]
 
     feature_columns = [col for col in df_combined.columns if not any(column in col for column in excluded_columns)]
     target_columns = [col for col in df_combined.columns if "Log_Returns_Tomorrow" in col]

@@ -212,6 +212,15 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std()  # Θεωρείται data-leakage αν δεν κοπεί πληροφορία στις πρώτες μέρες του validation, test set?
     df["RSI_14"] = compute_RSI(df, period=14)
 
+    df["SMA_5"] = df["Adjusted_close"].rolling(window=5).mean()
+    df["SMA_20"] = df["Adjusted_close"].rolling(window=20).mean()
+    df["SMA_50"] = df["Adjusted_close"].rolling(window=50).mean()
+
+    df["EMA_10"] = df["Adjusted_close"].ewm(span=10, adjust=False).mean()
+    df["EMA_50"] = df["Adjusted_close"].ewm(span=50, adjust=False).mean()
+
+    df["MA_Crossover"] = df["SMA_5"] > df["SMA_20"]
+
     df.dropna(inplace=True)
 
     """Case 1"""
@@ -221,12 +230,12 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     log_return_columns += ["Log_Returns_1"]
 
     """Extra Features"""
-    extra_features = ["RSI_14"] + ["Volatility"]
+    extra_features = ["RSI_14"] + ["Volatility"] + df["SMA_5"] + df["SMA_20"] + df["SMA_50"] + df["EMA_10"] + df["EMA_50"] + df["MA_Crossover"]
 
     """Features"""
     # features = ['Close']
     # features = []
-    features = ["Open", "High", "Low", "Adjusted_close", "Volume"]
+    features = ["Open", "High", "Low", 'Close', "Adjusted_close", "Volume"]
 
     # Split the data by date
     df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]

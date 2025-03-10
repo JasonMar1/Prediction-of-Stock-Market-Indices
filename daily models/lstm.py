@@ -72,7 +72,7 @@ def plot_losses(epochs, train_losses, valid_losses):
 torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TRAIN_START_DATE = "2000-01-01"
+TRAIN_START_DATE = "2006-01-01"
 TRAIN_END_DATE = "2019-12-31"
 
 VALID_START_DATE = "2020-01-01"
@@ -98,7 +98,7 @@ num_layers = None  # Set your own value
 dropout = None  # Set your own value
 learning_rate = 0.001636693769073419
 batch_size = None  # Set your own value
-epochs = 100
+epochs = 50
 sequence_length = 50
 
 
@@ -107,10 +107,25 @@ print('-' * 100)
 model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.50)
+
 
 train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
 train_losses = []
 valid_losses = []
+
+# Define OneCycleLR Scheduler
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=learning_rate * 10,  # Peak LR (usually 10x initial LR)
+    steps_per_epoch=len(train_loader),  # Number of batches per epoch
+    epochs=epochs,  # Total number of epochs
+    pct_start=0.3,  # Percentage of cycle spent increasing LR
+    anneal_strategy='cos',  # Cosine annealing for smooth decay
+    div_factor=10,  # Initial LR is max_lr / div_factor
+    final_div_factor=100,  # Final LR is max_lr / final_div_factor
+)
+
 
 for epoch in range(epochs):
     model.train()
@@ -123,6 +138,8 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
+
         train_loss.append(loss.item())
 
     avg_train_loss = np.mean(train_loss)
@@ -139,8 +156,9 @@ for epoch in range(epochs):
     avg_valid_loss = np.mean(valid_loss)
     valid_losses.append(avg_valid_loss)
 
+
     if (epoch + 1) % 10 == 0 or epoch == 0:
-        print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {avg_train_loss:.6f}, Valid Loss: {avg_valid_loss:.6f}")
+        print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {avg_train_loss:.6f}, Valid Loss: {avg_valid_loss:.6f}, Last_LR: {scheduler.get_last_lr()[0]}")
 
 plot_losses(epochs, train_losses, valid_losses)
 

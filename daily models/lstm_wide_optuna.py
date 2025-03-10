@@ -76,7 +76,7 @@ def objective(trial):
     seq_length = trial.suggest_int("sequence_length", 20, 60, step=5)
 
     epochs = 100
-    patience = 10
+    patience = 30
 
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=4, dropout=dropout).to(device)
     criterion = nn.L1Loss()  # MAE loss
@@ -109,10 +109,10 @@ def objective(trial):
         avg_valid_loss = np.mean(valid_loss)
 
 
-        # Optuna pruning (stops bad trials early)
-        trial.report(avg_valid_loss, epoch)
-        if trial.should_prune():
-            raise optuna.exceptions.TrialPruned()
+        # # Optuna pruning (stops bad trials early)
+        # trial.report(avg_valid_loss, epoch)
+        # if trial.should_prune():
+        #     raise optuna.exceptions.TrialPruned()
 
         # Early stopping
         if avg_valid_loss < best_val_loss:

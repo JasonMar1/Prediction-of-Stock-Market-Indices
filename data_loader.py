@@ -230,7 +230,7 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     log_return_columns += ["Log_Returns_1"]
 
     """Extra Features"""
-    extra_features = ["RSI_14"] + ["Volatility"] + df["SMA_5"] + df["SMA_20"] + df["SMA_50"] + df["EMA_10"] + df["EMA_50"] + df["MA_Crossover"]
+    extra_features = ["RSI_14"] + ["Volatility"] + ["SMA_5"] + ["SMA_20"] + ["SMA_50"] + ["EMA_10"] + ["EMA_50"] + ["MA_Crossover"]
 
     """Features"""
     # features = ['Close']

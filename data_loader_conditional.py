@@ -14,18 +14,27 @@ selected_indices = {
 }
 
 
-index_mapping = {
-    "DJA": 0,
-    "GSPC": 1,
-    "IXIC": 2,
-    "NYA": 3
-}
+index_mapping = {"DJA": 0, "GSPC": 1, "IXIC": 2, "NYA": 3} # For the torch.nn.Embedding
 
 
-indices_long = {v: os.path.join(BASE_DIR, "index_data", f"{v}.INDX.csv") for v in selected_indices.values()}
+indices_conditional = {v: os.path.join(BASE_DIR, "index_data", f"{v}.INDX.csv") for v in selected_indices.values()}
+
+
+def compute_RSI(df, period=14):
+    delta = df["Adjusted_close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+
+    avg_gain = gain.rolling(window=period, min_periods=period).mean()
+    avg_loss = loss.rolling(window=period, min_periods=period).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 
 def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
-    file_path = indices_long[index_name]
+    file_path = indices_conditional[index_name]
 
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
@@ -43,6 +52,18 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
     df["Log_Returns_10"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(10))
     df["Log_Returns_20"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(20))
 
+    df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std()
+    df["RSI_14"] = compute_RSI(df, period=14)
+
+    df["SMA_5"] = df["Adjusted_close"].rolling(window=5).mean()
+    df["SMA_20"] = df["Adjusted_close"].rolling(window=20).mean()
+    df["SMA_50"] = df["Adjusted_close"].rolling(window=50).mean()
+
+    df["EMA_10"] = df["Adjusted_close"].ewm(span=10, adjust=False).mean()
+    df["EMA_50"] = df["Adjusted_close"].ewm(span=50, adjust=False).mean()
+
+    df["MA_Crossover"] = df["SMA_5"] > df["SMA_20"]
+
     df.dropna(inplace=True)
 
     return df
@@ -51,9 +72,14 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
 def conditional_lstm_load_daily_data(selected_index, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     # Load data for the selected index
     df = load_index_data(selected_index, TRAIN_START_DATE, TEST_END_DATE)
+    df['Index'] = selected_index
 
-    feature_columns = ["Open", "High", "Low", "Adjusted_close", "Volume", "Log_Returns_1", "Log_Returns_5", "Log_Returns_10", "Log_Returns_20"]
+    # feature_columns = ["Open", "High", "Low", "Adjusted_close", "Volume", "Log_Returns_1", "Log_Returns_5", "Log_Returns_10", "Log_Returns_20",'Volatility', 'RSI_14', 'SMA_5', 'SMA_20', 'SMA_50', 'EMA_10', 'EMA_50', 'MA_Crossover']
 
+    excluded_columns = ["Log_Returns_Tomorrow", "Index"]
+    feature_columns = [col for col in df.columns if not any(column in col for column in excluded_columns)]
+
+    print(f'Feature columns: {feature_columns}')
     # Split the data by date
     df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
     df_valid = df.loc[VALID_START_DATE:VALID_END_DATE]

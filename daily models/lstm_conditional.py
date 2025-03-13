@@ -36,8 +36,8 @@ class LSTM(nn.Module):
         h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
         c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
 
-        if h_state == c_state:
-            print("h_state and c_state are equal")
+        # if h_state == c_state:
+        #     print("h_state and c_state are equal")
 
         # print(f'h_state: {h_state.size()}')
         # print(f'c_state: {c_state.size()}')
@@ -106,13 +106,10 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices(
-    False, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 # Align and Sort Data
-X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(
-    combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test,
-    combined_y_test, index_test)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # #OPTUNA
 # hidden_size = 53
@@ -128,19 +125,16 @@ num_layers = None  # Set your own value
 dropout = 0.15000000000000002
 learning_rate = 0.0045622646026526196
 batch_size = None  # Set your own value
-epochs = 200
+epochs = 2
 sequence_length = 60
 
 print('-' * 100)
 
-model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout,
-             num_indices=4, embedding_dim=8).to(device)
+model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout, num_indices=4, embedding_dim=8).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid,
-                                                          X_test, y_test, index_test, sequence_length, batch_size,
-                                                          device)
+train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, sequence_length, batch_size, device)
 train_losses = []
 valid_losses = []
 
@@ -179,15 +173,19 @@ plot_losses(epochs, train_losses, valid_losses)
 model.eval()
 predictions = []
 actuals = []
+index_labels = []
 
 with torch.no_grad():
     for batch_x, batch_y, batch_index in test_loader:
         outputs = model(batch_x, batch_index)
         predictions.append(outputs.squeeze().cpu().numpy())
         actuals.append(batch_y.squeeze().cpu().numpy())
+        index_labels.extend(batch_index.cpu().numpy())  # Store which index the prediction belongs to
 
 predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
+index_labels = np.array(index_labels)
+print(index_labels)
 print('-' * 100)
 
 mae_loss = mean_absolute_error(actuals, predictions)
@@ -196,8 +194,19 @@ print(f"MAE: {mae_loss:.6f}")
 rmse_loss = root_mean_squared_error(actuals, predictions)
 print(f"RMSE: {rmse_loss:.6f}")
 
+# Map index numbers back to index names
+index_mapping = {0: "DJA", 1: "GSPC", 2: "IXIC", 3: "NYA"}
+index_names = [index_mapping[idx] for idx in index_labels]  # Convert numerical index to name
+
+
 dates = df_test.index[sequence_length:]
-results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals}, index=dates)
+results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals,"Index": index_names}, index=dates)
+
+results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
+
+
+results.to_csv("predictions.csv")  # Save predictions for backtesting
+
 
 print("\nSample Predictions:")
 print(results.head(10))

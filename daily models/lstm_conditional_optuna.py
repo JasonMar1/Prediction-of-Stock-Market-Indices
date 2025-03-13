@@ -21,13 +21,10 @@ TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
 
-combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices(
-    True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 # Align and Sort Data
-X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(
-    combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test,
-    combined_y_test, index_test)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 
 class LSTM(nn.Module):
@@ -51,8 +48,8 @@ class LSTM(nn.Module):
         c_embedding = self.c_state(index)
 
         # Project embeddings to match LSTM's hidden_size
-        h_proj = self.h_state_proj(h_embedding)  # Shape: (batch_size, hidden_size)
-        c_proj = self.c_state_proj(c_embedding)  # Shape: (batch_size, hidden_size)
+        h_proj = self.h_state_proj(h_embedding)  # (batch_size, hidden_size)
+        c_proj = self.c_state_proj(c_embedding)  # (batch_size, hidden_size)
 
         h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
         c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
@@ -83,14 +80,10 @@ def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid
     valid_seq, valid_targets, valid_indices = create_sequences(X_valid, y_valid, index_valid, seq_length)
 
     # Convert the sequences, targets, indices to torch tensors & create the Dataloaders
-    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device),
-                                  torch.tensor(train_targets, dtype=torch.float32).to(device),
-                                  torch.tensor(train_indices, dtype=torch.long).to(device))
+    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device), torch.tensor(train_indices, dtype=torch.long).to(device))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device),
-                                  torch.tensor(valid_targets, dtype=torch.float32).to(device),
-                                  torch.tensor(valid_indices, dtype=torch.long).to(device))
+    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device), torch.tensor(valid_indices, dtype=torch.long).to(device))
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, valid_loader
@@ -108,9 +101,7 @@ def objective(trial):
     epochs = 100
     patience = 30
 
-    model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1,
-                 dropout=dropout,
-                 num_indices=4, embedding_dim=8).to(device)
+    model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout, num_indices=4, embedding_dim=8).to(device)
     criterion = nn.L1Loss()  # MAE loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -149,18 +140,18 @@ def objective(trial):
         # Early stopping
         if avg_valid_loss < best_val_loss:
             best_val_loss = avg_valid_loss
-            patience_counter = 0  # Reset patience since a better model is found
+            patience_counter = 0
         else:
             patience_counter += 1
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch} with best validation loss {best_val_loss:.6f}")
-                break  # Stop training
+                break
 
     return best_val_loss
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=500)
+study.optimize(objective, n_trials=2000)
 
 print("Best hyperparameters:")
 print(study.best_trial)

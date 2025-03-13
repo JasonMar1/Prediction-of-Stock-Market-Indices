@@ -122,12 +122,12 @@ def objective(trial):
         # Early stopping
         if avg_valid_loss < best_val_loss:
             best_val_loss = avg_valid_loss
-            patience_counter = 0  # Reset patience since a better model is found
+            patience_counter = 0
         else:
             patience_counter += 1
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch} with best validation loss {best_val_loss:.6f}")
-                break  # Stop training
+                break
 
     return best_val_loss
 

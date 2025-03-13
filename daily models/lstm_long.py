@@ -72,7 +72,7 @@ def plot_losses(epochs, train_losses, valid_losses):
 torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TRAIN_START_DATE = "2000-01-01"
+TRAIN_START_DATE = "2006-01-01"
 TRAIN_END_DATE = "2019-12-31"
 
 VALID_START_DATE = "2020-01-01"

@@ -30,8 +30,8 @@ class LSTM(nn.Module):
         c_embedding = self.c_state(index)
 
         # Project embeddings to match LSTM's hidden_size
-        h_proj = self.h_state_proj(h_embedding)  # Shape: (batch_size, hidden_size)
-        c_proj = self.c_state_proj(c_embedding)  # Shape: (batch_size, hidden_size)
+        h_proj = self.h_state_proj(h_embedding)  # (batch_size, hidden_size)
+        c_proj = self.c_state_proj(c_embedding)  # (batch_size, hidden_size)
 
         h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
         c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
@@ -57,26 +57,19 @@ def create_sequences(X, y, index_labels, seq_length):
     return np.array(xs), np.array(ys), np.array(indices)
 
 
-def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test,
-                    seq_length, batch_size, device):
+def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, seq_length, batch_size, device):
     train_seq, train_targets, train_indices = create_sequences(X_train, y_train, index_train, seq_length)
     valid_seq, valid_targets, valid_indices = create_sequences(X_valid, y_valid, index_valid, seq_length)
     test_seq, test_targets, test_indices = create_sequences(X_test, y_test, index_test, seq_length)
 
     # Convert the sequences, targets, indices to torch tensors & create the Dataloaders
-    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device),
-                                  torch.tensor(train_targets, dtype=torch.float32).to(device),
-                                  torch.tensor(train_indices, dtype=torch.long).to(device))
+    train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device), torch.tensor(train_indices, dtype=torch.long).to(device))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device),
-                                  torch.tensor(valid_targets, dtype=torch.float32).to(device),
-                                  torch.tensor(valid_indices, dtype=torch.long).to(device))
+    valid_dataset = TensorDataset(torch.tensor(valid_seq, dtype=torch.float32).to(device), torch.tensor(valid_targets, dtype=torch.float32).to(device), torch.tensor(valid_indices, dtype=torch.long).to(device))
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
-    test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device),
-                                 torch.tensor(test_targets, dtype=torch.float32).to(device),
-                                 torch.tensor(test_indices, dtype=torch.long).to(device))
+    test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device), torch.tensor(test_indices, dtype=torch.long).to(device))
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, valid_loader, test_loader
@@ -97,7 +90,7 @@ def plot_losses(epochs, train_losses, valid_losses):
 torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TRAIN_START_DATE = "2000-01-01"
+TRAIN_START_DATE = "2006-01-01"
 TRAIN_END_DATE = "2019-12-31"
 
 VALID_START_DATE = "2020-01-01"
@@ -111,22 +104,14 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-# #OPTUNA
-# hidden_size = 53
-# num_layers = 3
-# dropout = 0.1
-# learning_rate = 0.0001476
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 50
-
-hidden_size = 340
-num_layers = None  # Set your own value
-dropout = 0.15000000000000002
-learning_rate = 0.0045622646026526196
-batch_size = None  # Set your own value
-epochs = 2
-sequence_length = 60
+# OPTUNA
+hidden_size = 35
+num_layers = 2
+dropout = 0.30000000000000004
+learning_rate = 0.006812332097152033
+batch_size = 112
+epochs = 100
+sequence_length = 55
 
 print('-' * 100)
 

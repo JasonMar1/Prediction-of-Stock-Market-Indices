@@ -72,7 +72,7 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
 def conditional_lstm_load_daily_data(selected_index, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     # Load data for the selected index
     df = load_index_data(selected_index, TRAIN_START_DATE, TEST_END_DATE)
-    df['Index'] = selected_index
+    df['Index'] = selected_index  # For the backtesting
 
     # feature_columns = ["Open", "High", "Low", "Adjusted_close", "Volume", "Log_Returns_1", "Log_Returns_5", "Log_Returns_10", "Log_Returns_20",'Volatility', 'RSI_14', 'SMA_5', 'SMA_20', 'SMA_50', 'EMA_10', 'EMA_50', 'MA_Crossover']
 

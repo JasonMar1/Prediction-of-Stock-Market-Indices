@@ -93,10 +93,10 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = load_dai
 # epochs = 100
 # sequence_length = 50
 
-hidden_size = 48
+hidden_size = 108
 num_layers = None  # Set your own value
-dropout = None  # Set your own value
-learning_rate = 0.001636693769073419
+dropout = None  # Set your own value5
+learning_rate = 00.0019594494528614313
 batch_size = None  # Set your own value
 epochs = 50
 sequence_length = 50

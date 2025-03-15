@@ -20,7 +20,7 @@ class LSTM(nn.Module):
         self.h_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
         self.c_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
 
-        # Projection layers to map embedding dimension to LSTM hidden_size
+        # map embedding dimension to LSTM hidden_size
         self.h_state_proj = nn.Linear(embedding_dim, hidden_size)
         self.c_state_proj = nn.Linear(embedding_dim, hidden_size)
 
@@ -29,15 +29,13 @@ class LSTM(nn.Module):
         h_embedding = self.h_state(index)  # (batch_size, embedding_dim)
         c_embedding = self.c_state(index)
 
-        # Project embeddings to match LSTM's hidden_size
+        # map embedding dimension to LSTM hidden_size
         h_proj = self.h_state_proj(h_embedding)  # (batch_size, hidden_size)
         c_proj = self.c_state_proj(c_embedding)  # (batch_size, hidden_size)
 
+        # change to correct size (num_layers, batch_size, hidden_size)
         h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
         c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
-
-        # if h_state == c_state:
-        #     print("h_state and c_state are equal")
 
         # print(f'h_state: {h_state.size()}')
         # print(f'c_state: {c_state.size()}')

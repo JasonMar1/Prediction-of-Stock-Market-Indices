@@ -93,10 +93,18 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lst
 # epochs = 100
 # sequence_length = 50
 
-hidden_size = 133
+# hidden_size = 133
+# num_layers = None  # Set your own value
+# dropout = 0.5
+# learning_rate = 0.001107441311830249
+# batch_size = None  # Set your own value
+# epochs = 100
+# sequence_length = 60
+
+hidden_size = 48
 num_layers = None  # Set your own value
-dropout = 0.5
-learning_rate = 0.001107441311830249
+dropout = 0.4
+learning_rate = 0.003970556175073965
 batch_size = None  # Set your own value
 epochs = 100
 sequence_length = 60
@@ -166,8 +174,17 @@ print(f"RMSE: {rmse_loss:.6f}")
 
 
 dates = df_test.index[sequence_length:]
+
+adjusted_close_cols = ["DJA_Adjusted_close", "GSPC_Adjusted_close", "IXIC_Adjusted_close", "NYA_Adjusted_close"]
+
+adjusted_close_prices = df_test[adjusted_close_cols].iloc[sequence_length:].copy()
+adjusted_close_prices.index = dates  # Align indices
+
 results = pd.DataFrame(predictions, index=dates, columns=["Predicted_DJA", "Predicted_GSPC", "Predicted_IXIC", "Predicted_NYA"])
 results[["Actual_DJA", "Actual_GSPC", "Actual_IXIC", "Actual_NYA"]] = actuals
+results[["DJA_Adjusted_Close", "GSPC_Adjusted_Close", "IXIC_Adjusted_Close", "NYA_Adjusted_Close"]] = adjusted_close_prices
+
+results.to_csv("predictions_wide_lstm.csv")  # Save predictions for backtesting
 
 print("\nSample Predictions:")
 print(results.head(10))

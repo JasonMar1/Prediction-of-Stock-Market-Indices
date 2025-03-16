@@ -103,10 +103,10 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # OPTUNA
-hidden_size = 40
-num_layers = None  # Set your own value
-dropout = 0.35000000000000003
-learning_rate = 0.0018955971803879526
+hidden_size = 35
+num_layers = 2
+dropout = 0.30000000000000004
+learning_rate = 0.006812332097152033
 batch_size = 112
 epochs = 100
 sequence_length = 55
@@ -188,7 +188,7 @@ results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return"
 results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
 
 
-results.to_csv("predictions.csv")  # Save predictions for backtesting
+results.to_csv("predictions_conditional_lstm.csv")  # Save predictions for backtesting
 
 
 print("\nSample Predictions:")

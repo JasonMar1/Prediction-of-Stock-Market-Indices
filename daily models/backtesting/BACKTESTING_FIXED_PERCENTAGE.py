@@ -84,7 +84,7 @@ previous_year = None
 strategy = "fixed_percentage"
 
 print(f"\n{'='*20} Running Strategy: {strategy.upper()} {'='*20}")
-cash = 10000
+cash = 100000
 position = {"DJA": 0, "GSPC": 0, "IXIC": 0, "NYA": 0}
 
 for current_date in df_predictions.index:

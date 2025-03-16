@@ -42,7 +42,7 @@ def rebalance_portfolio(current_date, previous_month, previous_year, strategy_ty
 
     # Sell 50% of the positions of the non-selected indices
     for index in position.keys():
-        if index not in selected_indices or strategy_type in ["full_rebalancing", "hybrid"]:
+        if index not in selected_indices:
             close_price_row_sell = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
 
             if not close_price_row_sell.empty:
@@ -84,7 +84,7 @@ previous_year = None
 strategy = "hybrid"
 
 print(f"\n{'='*20} Running Strategy: {strategy.upper()} {'='*20}")
-cash = 10000
+cash = 100000
 position = {"DJA": 0, "GSPC": 0, "IXIC": 0, "NYA": 0}
 
 for current_date in df_predictions.index:

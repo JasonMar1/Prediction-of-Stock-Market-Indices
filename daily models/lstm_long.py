@@ -87,21 +87,13 @@ combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined
 X_train, y_train, X_valid, y_valid, X_test, y_test = combine_and_sort_data(combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test)
 
 # #OPTUNA
-# hidden_size = 53
-# num_layers = 3
-# dropout = 0.1
-# learning_rate = 0.0001476
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 50
-
-hidden_size = 340
+hidden_size = 40
 num_layers = None  # Set your own value
-dropout = 0.15000000000000002
-learning_rate = 0.0045622646026526196
-batch_size = None  # Set your own value
-epochs = 200
-sequence_length = 60
+dropout = 0.35000000000000003
+learning_rate = 0.0018955971803879526
+batch_size = 112
+epochs = 100
+sequence_length = 55
 
 
 print('-' * 100)

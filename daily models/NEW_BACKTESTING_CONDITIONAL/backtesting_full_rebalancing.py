@@ -1,9 +1,9 @@
+import math
+
 import pandas as pd
 
 
 portfolio_history = []
-
-investment_fraction = 0.5
 
 
 df_predictions = pd.read_csv("../predictions.csv", parse_dates=["Date"], index_col="Date")
@@ -23,21 +23,24 @@ def calculate_portfolio_value(current_date, cash, position): # without selling a
     return total_value
 
 
-def rebalance_portfolio(current_date, previous_month, previous_year, strategy_type, cash, position):
+def rebalance_portfolio(current_date, strategy_type, cash, position):
 
-    # Select past month's predictions
-    last_month_predictions = df_predictions[(df_predictions.index.month == previous_month) & (df_predictions.index.year == previous_year)]
+    next_day = df_predictions.index[df_predictions.index > current_date].min()
+
+    next_day_predictions = df_predictions[df_predictions.index == next_day]
 
     pd.set_option("display.float_format", "{:.15f}".format)  # Show up to 15 decimals (to make sure the values are calculated correctly)
 
-    # print(f'last month predictions: {last_month_predictions}')
+    # Calculate predicted daily returns for each index
+    index_scores = next_day_predictions.set_index("Index")["Predicted_Log_Return"]
 
-    # Sum predictions for each index based on the "Index" column
-    index_scores = last_month_predictions.groupby("Index")["Predicted_Log_Return"].sum()
+    # print(f"current_date: {current_date} - next_day: {next_day} - index_scores: {index_scores}")
+    # print(f'next_day_predictions: {next_day_predictions}')
+    # print('*' * 50)
 
     # print(f'Index Scores: {index_scores}')
 
-    # Select indices with positive total predicted return
+    # Select indices with positive predicted return for buying
     selected_indices = index_scores[index_scores > 0].index.tolist()
 
     # Sell everything
@@ -70,8 +73,9 @@ def rebalance_portfolio(current_date, previous_month, previous_year, strategy_ty
                     close_price_buy = close_price_row_buy["Adjusted_Close"].values[0]
 
                     if close_price_buy > 0 and allocation_per_index > 0:
-                        position[index] = allocation_per_index / close_price_buy  # Buy shares
-                        cash -= allocation_per_index  # All cash is allocated
+                        shares_to_buy = math.floor(allocation_per_index / close_price_buy)
+                        position[index] =  shares_to_buy  # Buy shares
+                        cash -= shares_to_buy * close_price_buy  # Deduct only the exact amount spent
 
                 except IndexError:
                     print(f"Warning: No closing price found for {index} on {current_date}")
@@ -87,17 +91,11 @@ print(f"\n{'='*20} Running Strategy: {strategy.upper()} {'='*20}")
 cash = 100000
 position = {"DJA": 0, "GSPC": 0, "IXIC": 0, "NYA": 0}
 
-for current_date in df_predictions.index:
-    current_month = current_date.month
-    current_year = current_date.year
-    if previous_month is not None and (current_month != previous_month or current_year != previous_year):
-        cash, position = rebalance_portfolio(current_date, previous_month, previous_year, strategy, cash, position)
+for current_date in df_predictions.index.unique():
+        cash, position = rebalance_portfolio(current_date, strategy, cash, position)
 
-        monthly_portfolio_value = calculate_portfolio_value(current_date, cash, position)
-        portfolio_history.append((current_date, monthly_portfolio_value))
-
-    previous_month = current_month
-    previous_year = current_year
+        portfolio_value = calculate_portfolio_value(current_date, cash, position)
+        portfolio_history.append((current_date, portfolio_value))
 
 final_portfolio_value = calculate_portfolio_value(df_predictions.index[-1], cash, position)
 

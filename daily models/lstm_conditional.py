@@ -37,6 +37,7 @@ class LSTM(nn.Module):
         h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
         c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
 
+        # print(f'h_state = {h_state}')
         # print(f'h_state: {h_state.size()}')
         # print(f'c_state: {c_state.size()}')
 
@@ -113,7 +114,7 @@ sequence_length = 55
 
 print('-' * 100)
 
-model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout, num_indices=4, embedding_dim=8).to(device)
+model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout, num_indices=4, embedding_dim=None  # Set your own value).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 

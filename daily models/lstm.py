@@ -83,6 +83,16 @@ TEST_END_DATE = "2025-01-24"
 
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
+print(f"Train samples: {X_train.shape[0]}")
+print(f"Validation samples: {X_valid.shape[0]}")
+print(f"Test samples: {X_test.shape[0]}")
+
+
+
+print(f"y_train samples: {y_train.shape[0]}")
+print(f"y_valid samples: {y_valid.shape[0]}")
+print(f"y_test samples: {y_test.shape[0]}")
+
 
 # #OPTUNA
 # hidden_size = 53
@@ -96,9 +106,9 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = load_dai
 hidden_size = 108
 num_layers = None  # Set your own value
 dropout = None  # Set your own value5
-learning_rate = 00.0019594494528614313
+learning_rate = 0.0019594494528614313
 batch_size = None  # Set your own value
-epochs = 50
+epochs = 100
 sequence_length = 50
 
 
@@ -114,7 +124,6 @@ train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_va
 train_losses = []
 valid_losses = []
 
-# Define OneCycleLR Scheduler
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=learning_rate * 10,  # Peak LR (usually 10x initial LR)
@@ -159,6 +168,7 @@ for epoch in range(epochs):
 
     if (epoch + 1) % 10 == 0 or epoch == 0:
         print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {avg_train_loss:.6f}, Valid Loss: {avg_valid_loss:.6f}, Last_LR: {scheduler.get_last_lr()[0]}")
+        # print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {avg_train_loss:.6f}, Valid Loss: {avg_valid_loss:.6f}")
 
 plot_losses(epochs, train_losses, valid_losses)
 

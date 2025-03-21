@@ -32,8 +32,6 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
 
     next_day_predictions = df_predictions.loc[next_day, ["Predicted_DJA", "Predicted_GSPC", "Predicted_IXIC", "Predicted_NYA"]]
 
-    pd.set_option("display.float_format", "{:.15f}".format)  # Show up to 15 decimals (to make sure the values are calculated correctly)
-
     # Select indices with positive predicted return for buying
     selected_indices = next_day_predictions[next_day_predictions > 0].index.str.replace("Predicted_", "").tolist()
 

@@ -3,10 +3,9 @@ import pandas as pd
 
 portfolio_history = []
 
-investment_fraction = 0.5
 
 
-df_predictions = pd.read_csv("../predictions.csv", parse_dates=["Date"], index_col="Date")
+df_predictions = pd.read_csv("../predictions_conditional_lstm.csv", parse_dates=["Date"], index_col="Date")
 
 # print(df_predictions)
 
@@ -27,8 +26,6 @@ def rebalance_portfolio(current_date, previous_month, previous_year, strategy_ty
 
     # Select past month's predictions
     last_month_predictions = df_predictions[(df_predictions.index.month == previous_month) & (df_predictions.index.year == previous_year)]
-
-    pd.set_option("display.float_format", "{:.15f}".format)  # Show up to 15 decimals (to make sure the values are calculated correctly)
 
     # print(f'last month predictions: {last_month_predictions}')
 

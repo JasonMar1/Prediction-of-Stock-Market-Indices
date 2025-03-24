@@ -47,11 +47,11 @@ def df_creation(TRAIN_START_DATE, TEST_END_DATE):
 
     df = df.loc[TRAIN_START_DATE:TEST_END_DATE]
 
-    return df
+    return df, index_name
 
 
 def load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
+    df, index_name = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Compute Daily Log Returns
     df["Log_Returns"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(1))
@@ -85,7 +85,7 @@ def load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_D
 
 
 def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
+    df, index_name = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Aggregate daily data into monthly data.
     monthly_df = df.resample("ME").agg({
@@ -131,7 +131,7 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START
 
 
 def load_weekly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
+    df, index_name = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Aggregate daily data into weekly data.
     weekly_df = df.resample("W-FRI").agg({
@@ -191,7 +191,8 @@ def compute_RSI(df, period=14):
 def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     log_return_columns = []
 
-    df = df_creation(TRAIN_START_DATE, TEST_END_DATE)
+    df, index_name = df_creation(TRAIN_START_DATE, TEST_END_DATE)
+    df['Index'] = index_name  # For the backtesting
 
     """Case 1: Compute Log Returns for different shifts"""
     # max_shift = 15
@@ -301,5 +302,4 @@ def load_daily_data_log_returns(standardized, TRAIN_START_DATE, TRAIN_END_DATE, 
     # print(df_test[extra_features].head())
     # print(df_test["Log_Returns_Tomorrow"].head())
 
-
-    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features
+    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name

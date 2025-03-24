@@ -68,10 +68,11 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
 def long_lstm_load_daily_data(selected_index, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     # Load data for the selected index
     df = load_index_data(selected_index, TRAIN_START_DATE, TEST_END_DATE)
+    df['Index'] = selected_index  # For the backtesting
 
     # feature_columns = ["Open", "High", "Low", "Adjusted_close", "Volume", "Log_Returns_1", "Log_Returns_5", "Log_Returns_10", "Log_Returns_20"]
 
-    excluded_columns = ["Log_Returns_Tomorrow"]
+    excluded_columns = ["Log_Returns_Tomorrow", "Index"]
     feature_columns = [col for col in df.columns if not any(column in col for column in excluded_columns)]
 
     # Split the data by date
@@ -99,9 +100,9 @@ def long_lstm_load_daily_data(selected_index, standardized, TRAIN_START_DATE, TR
 
 
 def long_lstm_load_multiple_indices(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    all_X_train, all_y_train = [], []
-    all_X_valid, all_y_valid = [], []
-    all_X_test, all_y_test = [], []
+    all_X_train, all_y_train, index_train = [], [], []
+    all_X_valid, all_y_valid, index_valid = [], [], []
+    all_X_test, all_y_test, index_test = [], [], []
 
     dfs_test = []
 
@@ -118,31 +119,42 @@ def long_lstm_load_multiple_indices(standardized, TRAIN_START_DATE, TRAIN_END_DA
         # Store the individual datasets
         all_X_train.append(X_train)
         all_y_train.append(y_train)
+        index_train.extend([index_name] * len(X_train)) # list with the index mapping for each sample of the set
 
         all_X_valid.append(X_valid)
         all_y_valid.append(y_valid)
+        index_valid.extend([index_name] * len(X_valid)) # list with the index mapping for each sample of the set
 
         all_X_test.append(X_test)
         all_y_test.append(y_test)
+        index_test.extend([index_name] * len(X_test)) # list with the index mapping for each sample of the set
 
         dfs_test.append(df_test)
 
+
     df_test_combined = pd.concat(dfs_test, axis=0).sort_index()  # Merge all the df_test DataFrames into a single DataFrame, sorted by date
+    return all_X_train, all_y_train, index_train, all_X_valid, all_y_valid, index_valid, all_X_test, all_y_test, index_test, df_test_combined, features
 
-    return all_X_train, all_y_train, all_X_valid, all_y_valid, all_X_test, all_y_test, df_test_combined, features
+
+def combine_and_sort_data(all_X_train, all_y_train, index_train, all_X_valid, all_y_valid, index_valid, all_X_test, all_y_test, index_test):
+    index_train_series = pd.Series(index_train, index=pd.concat(all_X_train).index)
+    index_valid_series = pd.Series(index_valid, index=pd.concat(all_X_valid).index)
+    index_test_series = pd.Series(index_test, index=pd.concat(all_X_test).index)
 
 
-def combine_and_sort_data(all_X_train, all_y_train, all_X_valid, all_y_valid, all_X_test, all_y_test):
     X_train_combined = pd.concat(all_X_train, axis=0).sort_index()
     y_train_combined = pd.concat(all_y_train, axis=0).sort_index()
+    index_train = index_train_series.sort_index()
 
     X_valid_combined = pd.concat(all_X_valid, axis=0).sort_index()
     y_valid_combined = pd.concat(all_y_valid, axis=0).sort_index()
+    index_valid = index_valid_series.sort_index()
 
     X_test_combined = pd.concat(all_X_test, axis=0).sort_index()
     y_test_combined = pd.concat(all_y_test, axis=0).sort_index()
+    index_test = index_test_series.sort_index()
 
-    return X_train_combined, y_train_combined, X_valid_combined, y_valid_combined, X_test_combined, y_test_combined
+    return X_train_combined, y_train_combined, index_train, X_valid_combined, y_valid_combined, index_valid, X_test_combined, y_test_combined, index_test
 
 
 

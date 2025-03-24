@@ -81,10 +81,10 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test, df_test, features_set = long_lstm_load_multiple_indices(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = long_lstm_load_multiple_indices(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 # Align and Sort Data
-X_train, y_train, X_valid, y_valid, X_test, y_test = combine_and_sort_data(combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # #OPTUNA
 hidden_size = 40
@@ -92,13 +92,13 @@ num_layers = None  # Set your own value
 dropout = 0.35000000000000003
 learning_rate = 0.0018955971803879526
 batch_size = 112
-epochs = 100
+epochs = 10
 sequence_length = 55
 
 
 print('-' * 100)
 
-model = LSTM(input_size=len(features_set), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
+model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -160,7 +160,15 @@ print(f"RMSE: {rmse_loss:.6f}")
 
 
 dates = df_test.index[sequence_length:]
-results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals}, index=dates)
+index_names = df_test["Index"].iloc[sequence_length:].tolist()
+# adjusted_closes = df_test["Adjusted_close"].iloc[sequence_length:].tolist()
+
+results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals, "Index": index_names}, index=dates)
+
+results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
+
+results.to_csv("predictions_long_lstm.csv")
+
 
 print("\nSample Predictions:")
 print(results.head(10))

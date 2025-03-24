@@ -5,6 +5,7 @@ import pandas as pd
 
 portfolio_history = []
 
+cash_fraction = 0.75
 
 df_predictions = pd.read_csv("../predictions_wide_lstm.csv", parse_dates=["Date"], index_col="Date")
 
@@ -24,7 +25,6 @@ def calculate_portfolio_value(current_date, cash, position): # without selling a
 
 
 def rebalance_portfolio(current_date, strategy_type, cash, position):
-
     next_day = df_predictions.index[df_predictions.index > current_date].min()
 
     if pd.isna(next_day):
@@ -35,34 +35,36 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
     # Select indices with positive predicted return for buying
     selected_indices = next_day_predictions[next_day_predictions > 0].index.str.replace("Predicted_", "").tolist()
 
-    # Sell everything
+    # Sell 50% of the positions of the non-selected indices
     for index in position.keys():
-        if strategy_type == "full_rebalancing":
+        if index not in selected_indices:
             close_price_sell = df_predictions.loc[current_date, f"{index}_Adjusted_Close"]
             if close_price_sell > 0 and position[index] > 0:
-                cash += close_price_sell * position[index]
-                if strategy_type == "full_rebalancing":
-                    position[index] = 0
+                half_shares = math.floor(position[index] / 2)
+                cash += close_price_sell * half_shares
+                position[index] -= half_shares
+
 
     if selected_indices:
-        if strategy_type == "full_rebalancing":
-            allocation_per_index = cash / len(selected_indices) if cash > 0 else 0
+        if strategy_type == "hybrid":
+            allocation_per_index = (cash * cash_fraction) / len(selected_indices) if cash > 0 else 0
 
-        # Update positions based on the closing price
+
         for index in selected_indices:
             close_price_buy = df_predictions.loc[current_date, f"{index}_Adjusted_Close"]
 
             if close_price_buy > 0 and allocation_per_index > 0:
                 shares_to_buy = math.floor(allocation_per_index / close_price_buy)
-                position[index] =  shares_to_buy  # Buy shares
-                cash -= shares_to_buy * close_price_buy  # Deduct only the exact amount spent
+                position[index] +=  shares_to_buy  # Buy shares
+                cash -= shares_to_buy * close_price_buy
 
     # print(f"{current_date}: Rebalanced Portfolio | Selected Indices: {selected_indices} | Cash: {cash} | Positions: {position}")
     return cash, position
 
-strategy = "full_rebalancing"
 
-print(f"\n{'='*20} Running Strategy: {strategy.upper()} {'='*20}")
+strategy = "hybrid"
+
+print(f"\n{'-'*20} Running Strategy: {strategy.upper()} {'-'*20}")
 cash = 100000
 position = {"DJA": 0, "GSPC": 0, "IXIC": 0, "NYA": 0}
 

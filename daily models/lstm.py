@@ -32,17 +32,18 @@ class LSTM(nn.Module):
 
 
 def create_sequences(X, y, seq_length):
-    xs, ys = [], []
+    xs, ys, dates = [], [], []
     for i in range(len(X) - seq_length):
         xs.append(X[i:i + seq_length])
         ys.append(y.iloc[i + seq_length])
-    return np.array(xs), np.array(ys)
+        dates.append(y.index[i + seq_length])  # Save the actual timestamp
+    return np.array(xs), np.array(ys), dates
 
 
 def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device):
-    train_seq, train_targets = create_sequences(X_train, y_train, seq_length)
-    valid_seq, valid_targets = create_sequences(X_valid, y_valid, seq_length)
-    test_seq, test_targets = create_sequences(X_test, y_test, seq_length)
+    train_seq, train_targets, _ = create_sequences(X_train, y_train, seq_length)
+    valid_seq, valid_targets, _ = create_sequences(X_valid, y_valid, seq_length)
+    test_seq, test_targets, test_dates = create_sequences(X_test, y_test, seq_length)
 
     # Convert the sequences, targets to torch tensors & create the Dataloaders
     train_dataset = TensorDataset(torch.tensor(train_seq, dtype=torch.float32).to(device), torch.tensor(train_targets, dtype=torch.float32).to(device))
@@ -54,7 +55,7 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_leng
     test_dataset = TensorDataset(torch.tensor(test_seq, dtype=torch.float32).to(device), torch.tensor(test_targets, dtype=torch.float32).to(device))
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_loader, valid_loader, test_loader
+    return train_loader, valid_loader, test_loader, test_dates
 
 
 def plot_losses(epochs, train_losses, valid_losses):
@@ -81,17 +82,7 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
-
-print(f"Train samples: {X_train.shape[0]}")
-print(f"Validation samples: {X_valid.shape[0]}")
-print(f"Test samples: {X_test.shape[0]}")
-
-
-
-print(f"y_train samples: {y_train.shape[0]}")
-print(f"y_valid samples: {y_valid.shape[0]}")
-print(f"y_test samples: {y_test.shape[0]}")
+X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
 # #OPTUNA
@@ -120,7 +111,7 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.50)
 
 
-train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
+train_loader, valid_loader, test_loader, test_dates = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
 train_losses = []
 valid_losses = []
 
@@ -192,9 +183,15 @@ print(f"MAE: {mae_loss:.6f}")
 rmse_loss = root_mean_squared_error(actuals, predictions)
 print(f"RMSE: {rmse_loss:.6f}")
 
+dates = df_test.index[sequence_length:]
+index_names = df_test["Index"].iloc[sequence_length:].tolist()
 
-dates = df_test.index[sequence_length:sequence_length + len(predictions)]
-results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals}, index=dates)
+
+results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals, "Index": index_names}, index=dates)
+
+results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
+
+results.to_csv(f"predictions_basic_lstm_{index_name}.csv")
 
 print("\nSample Predictions:")
 print(results.head(10))

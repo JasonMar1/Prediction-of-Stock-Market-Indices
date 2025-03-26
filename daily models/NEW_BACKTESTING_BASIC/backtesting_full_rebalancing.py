@@ -17,7 +17,7 @@ df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]
 df_predictions = pd.concat(df_list).sort_values(by="Date")
 df_predictions.set_index("Date", inplace=True)
 
-# print(df_predictions)
+print(df_predictions)
 
 
 def calculate_portfolio_value(current_date, cash, position): # without selling any positions
@@ -85,7 +85,6 @@ position = {"DJA": 0, "GSPC": 0, "IXIC": 0, "NYA": 0}
 
 for current_date in df_predictions.index.unique():
         cash, position = rebalance_portfolio(current_date, strategy, cash, position)
-        # print(position)
 
         portfolio_value = calculate_portfolio_value(current_date, cash, position)
         portfolio_history.append((current_date, portfolio_value))

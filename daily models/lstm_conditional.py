@@ -114,7 +114,7 @@ sequence_length = 55
 
 print('-' * 100)
 
-model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout, num_indices=4, embedding_dim=8).to(device)
+model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout, num_indices=4, embedding_dim=None  # Set your own value).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 

@@ -21,7 +21,6 @@ plt.plot(df_combined.index, df_combined["full_rebalancing"], label="Full Rebalan
 plt.plot(df_combined.index, df_combined["fixed_percentage"], label="Fixed Percentage", linestyle="solid", marker="s")
 plt.plot(df_combined.index, df_combined["hybrid"], label="Hybrid", linestyle="dashdot", marker="d")
 
-# Set x-axis to show only months
 plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=1))  # Show every month
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))  # Format as YYYY-MM
 plt.xticks(rotation=45)

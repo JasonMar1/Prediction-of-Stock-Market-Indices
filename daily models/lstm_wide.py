@@ -119,6 +119,16 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
 train_losses = []
 valid_losses = []
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=learning_rate * 10,  # Peak LR (usually 10x initial LR)
+    steps_per_epoch=len(train_loader),  # Number of batches per epoch
+    epochs=epochs,  # Total number of epochs
+    pct_start=0.3,  # Percentage of cycle spent increasing LR
+    anneal_strategy='cos',  # Cosine annealing for smooth decay
+    div_factor=10,  # Initial LR is max_lr / div_factor
+    final_div_factor=100,  # Final LR is max_lr / final_div_factor
+)
 
 for epoch in range(epochs):
     model.train()
@@ -131,6 +141,8 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
+
         train_loss.append(loss.item())
 
     avg_train_loss = np.mean(train_loss)

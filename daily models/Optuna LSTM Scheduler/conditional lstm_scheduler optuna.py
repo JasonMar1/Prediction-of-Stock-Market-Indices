@@ -21,13 +21,12 @@ TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
 
-combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices(
-    True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+
 
 # Align and Sort Data
-X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(
-    combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test,
-    combined_y_test, index_test)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
+
 
 
 class LSTM(nn.Module):
@@ -119,7 +118,7 @@ def objective(trial):
 
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1,
                  dropout=dropout,
-                 num_indices=4, embedding_dim=8).to(device)
+                 num_indices=4, embedding_dim=None  # Set your own value).to(device)
     criterion = nn.L1Loss()  # MAE loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 

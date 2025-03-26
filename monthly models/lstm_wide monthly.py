@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 from torch.utils.data import TensorDataset, DataLoader
-from data_loader_long import long_lstm_load_multiple_indices, combine_and_sort_data
+from data_loader_wide import wide_lstm_load_monthly_data
 import matplotlib.pyplot as plt
 
 
@@ -81,31 +81,44 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = long_lstm_load_multiple_indices('daily', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lstm_load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
-# Align and Sort Data
-X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # #OPTUNA
-hidden_size = 40
+# hidden_size = 53
+# num_layers = 3
+# dropout = 0.1
+# learning_rate = 0.0001476
+# batch_size = None  # Set your own value
+# epochs = 100
+# sequence_length = 50
+
+# hidden_size = 133
+# num_layers = None  # Set your own value
+# dropout = 0.5
+# learning_rate = 0.001107441311830249
+# batch_size = None  # Set your own value
+# epochs = 100
+# sequence_length = 60
+
+hidden_size = 48
 num_layers = None  # Set your own value
-dropout = 0.35000000000000003
-learning_rate = 0.0018955971803879526
-batch_size = 112
-epochs = 10
-sequence_length = 55
+dropout = 0.4
+learning_rate = 0.003970556175073965
+batch_size = None  # Set your own value
+epochs = 100
+sequence_length = 60
 
 
 print('-' * 100)
 
-model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)
+model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=4, dropout=dropout).to(device)
 criterion = nn.L1Loss()  # MAE loss
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
 train_losses = []
 valid_losses = []
-
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=learning_rate * 10,  # Peak LR (usually 10x initial LR)
@@ -159,7 +172,7 @@ with torch.no_grad():
     for batch_x, batch_y in test_loader:
         outputs = model(batch_x)
         predictions.append(outputs.squeeze().cpu().numpy())
-        actuals.append(batch_y.squeeze().cpu().numpy())
+        actuals.append(batch_y.cpu().numpy())
 
 predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
@@ -173,15 +186,17 @@ print(f"RMSE: {rmse_loss:.6f}")
 
 
 dates = df_test.index[sequence_length:]
-index_names = df_test["Index"].iloc[sequence_length:].tolist()
-# adjusted_closes = df_test["Adjusted_close"].iloc[sequence_length:].tolist()
 
-results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return": actuals, "Index": index_names}, index=dates)
+adjusted_close_cols = ["DJA_Adjusted_close", "GSPC_Adjusted_close", "IXIC_Adjusted_close", "NYA_Adjusted_close"]
 
-results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
+adjusted_close_prices = df_test[adjusted_close_cols].iloc[sequence_length:].copy()
+adjusted_close_prices.index = dates  # Align indices
 
-results.to_csv("predictions_long_lstm.csv")
+results = pd.DataFrame(predictions, index=dates, columns=["Predicted_DJA", "Predicted_GSPC", "Predicted_IXIC", "Predicted_NYA"])
+results[["Actual_DJA", "Actual_GSPC", "Actual_IXIC", "Actual_NYA"]] = actuals
+results[["DJA_Adjusted_Close", "GSPC_Adjusted_Close", "IXIC_Adjusted_Close", "NYA_Adjusted_Close"]] = adjusted_close_prices
 
+results.to_csv("predictions_wide_lstm.csv")  # Save predictions for backtesting
 
 print("\nSample Predictions:")
 print(results.head(10))

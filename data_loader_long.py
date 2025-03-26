@@ -16,7 +16,7 @@ selected_indices = {
 indices_long = {v: os.path.join(BASE_DIR, "index_data", f"{v}.INDX.csv") for v in selected_indices.values()}
 
 
-def compute_RSI(df, period=14):
+def compute_RSI(df, period):
     delta = df["Adjusted_close"].diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
@@ -64,6 +64,83 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
 
     return df
 
+def load_index_monthly_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
+    file_path = indices_long[index_name]
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
+    df = df[df.index >= "1950-01-03"]
+    df = df.loc[TRAIN_START_DATE:TEST_END_DATE]
+
+    # Aggregate daily data into monthly data.
+    monthly_df = df.resample("ME").agg({
+        "Open": "first",
+        "High": "max",
+        "Low": "min",
+        "Close": "last",
+        "Adjusted_close": "last",
+        "Volume": "sum"
+    })
+
+    # Monthly Log Returns
+    monthly_df["Log_Returns"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(1))
+    monthly_df["Log_Returns_Next_Month"] = monthly_df["Log_Returns"].shift(-1)
+
+    monthly_df["Log_Returns_2"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(2))
+    monthly_df["Log_Returns_4"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(4))
+    monthly_df["Log_Returns_6"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(6))
+
+    monthly_df["Volatility"] = monthly_df["Log_Returns"].rolling(window=3).std()
+    monthly_df["RSI_6"] = compute_RSI(monthly_df, period=6)
+
+    monthly_df["SMA_2"] = monthly_df["Adjusted_close"].rolling(window=2).mean()
+    monthly_df["SMA_6"] = monthly_df["Adjusted_close"].rolling(window=6).mean()
+    monthly_df["SMA_12"] = monthly_df["Adjusted_close"].rolling(window=12).mean()
+
+    monthly_df["EMA_2"] = monthly_df["Adjusted_close"].ewm(span=2, adjust=False).mean()
+    monthly_df["EMA_6"] = monthly_df["Adjusted_close"].ewm(span=6, adjust=False).mean()
+
+    monthly_df["MA_Crossover"] = monthly_df["SMA_2"] > monthly_df["SMA_6"]
+
+    monthly_df.dropna(inplace=True)
+
+    return monthly_df
+
+def long_lstm_load_monthly_data(selected_index, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    # Load data for the selected index
+    df = load_index_monthly_data(selected_index, TRAIN_START_DATE, TEST_END_DATE)
+    df['Index'] = selected_index  # For the backtesting
+
+    # feature_columns = ["Open", "High", "Low", "Adjusted_close", "Volume", "Log_Returns_1", "Log_Returns_5", "Log_Returns_10", "Log_Returns_20"]
+
+    excluded_columns = ["Log_Returns_Next_Month", "Index"]
+    feature_columns = [col for col in df.columns if not any(column in col for column in excluded_columns)]
+
+    # Split the data by date
+    df_train = df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_valid = df.loc[VALID_START_DATE:VALID_END_DATE]
+    df_test = df.loc[TEST_START_DATE:TEST_END_DATE]
+
+    X_train = df_train[feature_columns]
+    y_train = df_train["Log_Returns_Next_Month"]
+
+    X_valid = df_valid[feature_columns]
+    y_valid = df_valid["Log_Returns_Next_Month"]
+
+    X_test = df_test[feature_columns]
+    y_test = df_test["Log_Returns_Next_Month"]
+
+    if standardized:
+        # Standardize Features
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_valid = scaler.transform(X_valid)
+        X_test = scaler.transform(X_test)
+
+    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_train, df_valid, df_test, feature_columns
+
 
 def long_lstm_load_daily_data(selected_index, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     # Load data for the selected index
@@ -99,7 +176,7 @@ def long_lstm_load_daily_data(selected_index, standardized, TRAIN_START_DATE, TR
     return X_train, y_train, X_valid, y_valid, X_test, y_test, df_train, df_valid, df_test, feature_columns
 
 
-def long_lstm_load_multiple_indices(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
+def long_lstm_load_multiple_indices(type, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     all_X_train, all_y_train, index_train = [], [], []
     all_X_valid, all_y_valid, index_valid = [], [], []
     all_X_test, all_y_test, index_test = [], [], []
@@ -109,7 +186,10 @@ def long_lstm_load_multiple_indices(standardized, TRAIN_START_DATE, TRAIN_END_DA
     for index_name in selected_indices.values():
         print(f"Loading data for {index_name}...")
 
-        X_train, y_train, X_valid, y_valid, X_test, y_test, df_train, df_valid, df_test, features = long_lstm_load_daily_data(index_name, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+        if type == 'daily':
+            X_train, y_train, X_valid, y_valid, X_test, y_test, df_train, df_valid, df_test, features = long_lstm_load_daily_data(index_name, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+        elif type == 'monthly':
+            X_train, y_train, X_valid, y_valid, X_test, y_test, df_train, df_valid, df_test, features = long_lstm_load_monthly_data(index_name, standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
         # Convert everything to DataFrames to enable date alignment
         X_train, y_train = pd.DataFrame(X_train, index=df_train.loc[TRAIN_START_DATE:TRAIN_END_DATE].index),pd.DataFrame(y_train, index=df_train.loc[TRAIN_START_DATE:TRAIN_END_DATE].index)

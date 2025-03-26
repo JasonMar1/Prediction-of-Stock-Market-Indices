@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
-from data_loader import load_monthly_data
+
+from data_loader_long import long_lstm_load_multiple_indices, combine_and_sort_data
 import optuna
 
 torch.manual_seed(42)
@@ -19,7 +20,11 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name = load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = long_lstm_load_multiple_indices('monthly', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+
+# Align and Sort Data
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 
 class LSTM(nn.Module):
@@ -67,13 +72,15 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, seq_length, batch_size, 
 
 
 def objective(trial):
-    hidden_size = trial.suggest_int("hidden_size", 32, 256, log=True)
+    # Define hyperparameter search space
+    hidden_size = trial.suggest_int("hidden_size", 32, 512, log=True)
     num_layers = trial.suggest_int("num_layers", 1, 4)
     dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
-    seq_length = trial.suggest_int("sequence_length", 10, 50, step=5)
-    epochs = 200
+    seq_length = trial.suggest_int("sequence_length", 20, 60, step=5)
+
+    epochs = 100
     patience = 30
 
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1, dropout=dropout).to(device)

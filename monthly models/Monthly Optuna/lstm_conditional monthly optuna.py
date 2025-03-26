@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
-
 from data_loader_conditional import conditional_lstm_load_multiple_indices, combine_and_sort_data
 import optuna
 
@@ -20,14 +19,13 @@ VALID_END_DATE = "2023-01-23"
 TEST_START_DATE = "2023-01-24"
 TEST_END_DATE = "2025-01-24"
 
-
-combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices('daily', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
-
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices( 'monthly',
+    True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 # Align and Sort Data
-X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
-
-
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(
+    combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test,
+    combined_y_test, index_test)
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout, num_indices, embedding_dim):
@@ -95,26 +93,16 @@ def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid
     return train_loader, valid_loader
 
 
+
 def objective(trial):
-    hidden_size = 35
-    num_layers = 2
-    dropout = 0.30000000000000004
-    learning_rate = 0.006812332097152033
-    batch_size = 112
-    epochs = 100
-    seq_length = 55
-
+    hidden_size = trial.suggest_int("hidden_size", 32, 256, log=True)
+    num_layers = trial.suggest_int("num_layers", 1, 4)
+    dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
+    learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
+    batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
+    seq_length = trial.suggest_int("sequence_length", 10, 50, step=5)
+    epochs = 200
     patience = 30
-
-    # Scheduler-specific hyperparameters to be tuned
-    max_lr = trial.suggest_float("max_lr", learning_rate * 5, learning_rate * 20)
-    pct_start = trial.suggest_float("pct_start", 0.1, 0.5)
-    div_factor = trial.suggest_int("div_factor", 5, 25)
-    final_div_factor = trial.suggest_int("final_div_factor", 10, 500)
-
-
-    train_loader, valid_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid,  seq_length, batch_size, device)
-
 
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1,
                  dropout=dropout,
@@ -122,17 +110,7 @@ def objective(trial):
     criterion = nn.L1Loss()  # MAE loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer,
-        max_lr=max_lr,
-        steps_per_epoch=len(train_loader),
-        epochs=epochs,
-        pct_start=pct_start,
-        anneal_strategy='cos',
-        cycle_momentum=False,
-        div_factor=div_factor,
-        final_div_factor=final_div_factor
-    )
+    train_loader, valid_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid,  seq_length, batch_size, device)
 
     best_val_loss = float("inf")
     patience_counter = 0
@@ -147,7 +125,6 @@ def objective(trial):
 
             loss.backward()
             optimizer.step()
-            scheduler.step()
 
         model.eval()
         valid_loss = []
@@ -168,18 +145,18 @@ def objective(trial):
         # Early stopping
         if avg_valid_loss < best_val_loss:
             best_val_loss = avg_valid_loss
-            patience_counter = 0  # Reset patience since a better model is found
+            patience_counter = 0
         else:
             patience_counter += 1
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch} with best validation loss {best_val_loss:.6f}")
-                break  # Stop training
+                break
 
     return best_val_loss
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=500)
+study.optimize(objective, n_trials=2000)
 
 print("Best hyperparameters:")
 print(study.best_trial)

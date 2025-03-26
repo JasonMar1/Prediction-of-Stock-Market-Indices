@@ -107,7 +107,7 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_STAR
     monthly_df["Log_Returns_6"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(6))
     log_return_columns += ["Log_Returns_2", "Log_Returns_4", "Log_Returns_6"]
 
-    monthly_df["Volatility"] = monthly_df["Log_Returns_1"].rolling(window=3).std()
+    monthly_df["Volatility"] = monthly_df["Log_Returns"].rolling(window=3).std()
     monthly_df["RSI_6"] = compute_RSI(monthly_df, period=6)
 
     monthly_df["SMA_2"] = monthly_df["Adjusted_close"].rolling(window=2).mean()
@@ -122,7 +122,7 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_STAR
     monthly_df.dropna(inplace=True)
 
     """Case 2"""
-    log_return_columns += ["Log_Returns_1"]
+    log_return_columns += ["Log_Returns"]
 
     """Extra Features"""
     extra_features = ["RSI_6"] + ["Volatility"] + ["SMA_2"] + ["SMA_6"] + ["SMA_12"] + ["EMA_2"] + ["EMA_6"] + ["MA_Crossover"]
@@ -139,13 +139,13 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_STAR
     df_test = monthly_df.loc[TEST_START_DATE:TEST_END_DATE]
 
     X_train = df_train[features]
-    y_train = df_train["Log_Returns_Tomorrow"]
+    y_train = df_train["Log_Returns_Next_Month"]
 
     X_valid = df_valid[features]
-    y_valid = df_valid["Log_Returns_Tomorrow"]
+    y_valid = df_valid["Log_Returns_Next_Month"]
 
     X_test = df_test[features]
-    y_test = df_test["Log_Returns_Tomorrow"]
+    y_test = df_test["Log_Returns_Next_Month"]
 
     if features:
         if standardized:

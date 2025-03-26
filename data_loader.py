@@ -84,7 +84,8 @@ def load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_D
     return X_train, y_train, X_test, y_test, df_test
 
 
-def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
+def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    log_return_columns = []
     df, index_name = df_creation(TRAIN_START_DATE, TEST_END_DATE)
 
     # Aggregate daily data into monthly data.
@@ -101,33 +102,92 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START
     monthly_df["Log_Returns"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(1))
     monthly_df["Log_Returns_Next_Month"] = monthly_df["Log_Returns"].shift(-1)
 
+    monthly_df["Log_Returns_2"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(2))
+    monthly_df["Log_Returns_4"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(4))
+    monthly_df["Log_Returns_6"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(6))
+    log_return_columns += ["Log_Returns_2", "Log_Returns_4", "Log_Returns_6"]
+
+    monthly_df["Volatility"] = monthly_df["Log_Returns_1"].rolling(window=3).std()
+    monthly_df["RSI_6"] = compute_RSI(monthly_df, period=6)
+
+    monthly_df["SMA_2"] = monthly_df["Adjusted_close"].rolling(window=2).mean()
+    monthly_df["SMA_6"] = monthly_df["Adjusted_close"].rolling(window=6).mean()
+    monthly_df["SMA_12"] = monthly_df["Adjusted_close"].rolling(window=12).mean()
+
+    monthly_df["EMA_2"] = monthly_df["Adjusted_close"].ewm(span=2, adjust=False).mean()
+    monthly_df["EMA_6"] = monthly_df["Adjusted_close"].ewm(span=6, adjust=False).mean()
+
+    monthly_df["MA_Crossover"] = monthly_df["SMA_2"] > monthly_df["SMA_6"]
+
     monthly_df.dropna(inplace=True)
 
-    # features = ["Open", "High", "Low", "Close", "Adjusted_close", "Volume"]
-    features = ["Close"]
-    log_return_columns = ["Log_Returns"]
+    """Case 2"""
+    log_return_columns += ["Log_Returns_1"]
+
+    """Extra Features"""
+    extra_features = ["RSI_6"] + ["Volatility"] + ["SMA_2"] + ["SMA_6"] + ["SMA_12"] + ["EMA_2"] + ["EMA_6"] + ["MA_Crossover"]
+
+    """Features"""
+    # features = ['Close']
+    # features = []
+    features = ["Open", "High", "Low", 'Close', "Adjusted_close", "Volume"]
+
 
     # Split the data by date
     df_train = monthly_df.loc[TRAIN_START_DATE:TRAIN_END_DATE]
+    df_valid = monthly_df.loc[VALID_START_DATE:VALID_END_DATE]
     df_test = monthly_df.loc[TEST_START_DATE:TEST_END_DATE]
 
     X_train = df_train[features]
-    y_train = df_train["Log_Returns_Next_Month"]
+    y_train = df_train["Log_Returns_Tomorrow"]
+
+    X_valid = df_valid[features]
+    y_valid = df_valid["Log_Returns_Tomorrow"]
 
     X_test = df_test[features]
-    y_test = df_test["Log_Returns_Next_Month"]
+    y_test = df_test["Log_Returns_Tomorrow"]
 
-    if standardized:
-        if features:
+    if features:
+        if standardized:
             # Standardize Features
             scaler = StandardScaler()
             X_train = scaler.fit_transform(X_train)
+            X_valid = scaler.transform(X_valid)
             X_test = scaler.transform(X_test)
 
-    X_train = np.hstack([X_train, df_train[log_return_columns]])
-    X_test = np.hstack([X_test, df_test[log_return_columns]])
 
-    return X_train, y_train, X_test, y_test, df_test
+    answer = input('\nStandardize the extra features? (y/n): ').strip().lower()
+    if answer  == 'y':
+        print('yes')
+
+        scaler_extra = StandardScaler()
+        X_train_extra = scaler_extra.fit_transform(df_train[extra_features])
+        X_valid_extra = scaler_extra.transform(df_valid[extra_features])
+        X_test_extra = scaler_extra.transform(df_test[extra_features])
+
+        X_train = np.hstack([X_train, X_train_extra])
+        X_valid = np.hstack([X_valid, X_valid_extra])
+        X_test = np.hstack([X_test, X_test_extra])
+
+        leftover_features = log_return_columns
+
+        X_train = np.hstack([X_train, df_train[leftover_features]])
+        X_valid = np.hstack([X_valid, df_valid[leftover_features]])
+        X_test = np.hstack([X_test, df_test[leftover_features]])
+
+        features += extra_features + leftover_features
+
+    elif answer == 'n':
+        print('no')
+
+        extra_features += log_return_columns
+        X_train = np.hstack([X_train, df_train[extra_features]])
+        X_valid = np.hstack([X_valid, df_valid[extra_features]])
+        X_test = np.hstack([X_test, df_test[extra_features]])
+
+        features += extra_features
+
+    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name
 
 
 def load_weekly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_DATE, TEST_END_DATE):
@@ -175,7 +235,7 @@ def load_weekly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, TEST_START_
     return X_train, y_train, X_test, y_test, df_test
 
 
-def compute_RSI(df, period=14):
+def compute_RSI(df, period):
     delta = df["Adjusted_close"].diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)

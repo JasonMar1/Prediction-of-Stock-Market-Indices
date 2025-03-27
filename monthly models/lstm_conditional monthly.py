@@ -189,7 +189,7 @@ results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return"
 results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
 
 
-results.to_csv("predictions_conditional_lstm.csv")  # Save predictions for backtesting
+results.to_csv("monthly_predictions_conditional_lstm.csv")  # Save predictions for backtesting
 
 
 print("\nSample Predictions:")

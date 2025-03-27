@@ -196,7 +196,7 @@ results = pd.DataFrame(predictions, index=dates, columns=["Predicted_DJA", "Pred
 results[["Actual_DJA", "Actual_GSPC", "Actual_IXIC", "Actual_NYA"]] = actuals
 results[["DJA_Adjusted_Close", "GSPC_Adjusted_Close", "IXIC_Adjusted_Close", "NYA_Adjusted_Close"]] = adjusted_close_prices
 
-results.to_csv("predictions_wide_lstm.csv")  # Save predictions for backtesting
+results.to_csv("monthly_predictions_wide_lstm.csv")  # Save predictions for backtesting
 
 print("\nSample Predictions:")
 print(results.head(10))

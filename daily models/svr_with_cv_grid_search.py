@@ -4,11 +4,11 @@ from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 import pandas as pd
 
-TRAIN_START_DATE = "2000-01-05"
-TRAIN_END_DATE = "2023-12-23"
+TRAIN_START_DATE = "2006-01-01"
+TRAIN_END_DATE = "2022-10-01"
 
-TEST_START_DATE = "2023-12-24"
-TEST_END_DATE = "2025-01-24"
+TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
+TEST_END_DATE = "2025-01-01"
 
 df, features = load_daily_data_log_returns(True, TRAIN_START_DATE, TEST_END_DATE)
 

@@ -73,13 +73,13 @@ torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 TRAIN_START_DATE = "2006-01-01"
-TRAIN_END_DATE = "2019-12-31"
+TRAIN_END_DATE = "2019-11-30"
 
-VALID_START_DATE = "2020-01-01"
-VALID_END_DATE = "2023-01-23"
+VALID_START_DATE = "2019-12-01"
+VALID_END_DATE = "2022-08-31"
 
-TEST_START_DATE = "2023-01-24"
-TEST_END_DATE = "2025-01-24"
+TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
+TEST_END_DATE = "2025-01-01"
 
 combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = long_lstm_load_multiple_indices('monthly', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
@@ -87,13 +87,13 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # #OPTUNA
-hidden_size = 40
+hidden_size = 62
 num_layers = None  # Set your own value
-dropout = 0.35000000000000003
-learning_rate = 0.0018955971803879526
-batch_size = 112
-epochs = 10
-sequence_length = 55
+dropout = 0.5
+learning_rate = 0.00750023300433813
+batch_size = None  # Set your own value
+epochs = 200
+sequence_length = None  # Set your own value
 
 
 print('-' * 100)
@@ -106,16 +106,16 @@ train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_va
 train_losses = []
 valid_losses = []
 
-scheduler = optim.lr_scheduler.OneCycleLR(
-    optimizer,
-    max_lr=learning_rate * 10,  # Peak LR (usually 10x initial LR)
-    steps_per_epoch=len(train_loader),  # Number of batches per epoch
-    epochs=epochs,  # Total number of epochs
-    pct_start=0.3,  # Percentage of cycle spent increasing LR
-    anneal_strategy='cos',  # Cosine annealing for smooth decay
-    div_factor=10,  # Initial LR is max_lr / div_factor
-    final_div_factor=100,  # Final LR is max_lr / final_div_factor
-)
+# scheduler = optim.lr_scheduler.OneCycleLR(
+#     optimizer,
+#     max_lr=learning_rate * 10,
+#     steps_per_epoch=len(train_loader),
+#     epochs=epochs,
+#     pct_start=0.3,
+#     anneal_strategy='cos',
+#     div_factor=10,
+#     final_div_factor=100,
+# )
 
 for epoch in range(epochs):
     model.train()
@@ -128,7 +128,7 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
-        scheduler.step()
+        # scheduler.step()
 
         train_loss.append(loss.item())
 
@@ -165,11 +165,11 @@ predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
 print('-' * 100)
 
-mae_loss = mean_absolute_error(actuals, predictions)
-print(f"MAE: {mae_loss:.6f}")
-
-rmse_loss = root_mean_squared_error(actuals, predictions)
-print(f"RMSE: {rmse_loss:.6f}")
+# mae_loss = mean_absolute_error(actuals, predictions)
+# print(f"MAE: {mae_loss:.6f}")
+#
+# rmse_loss = root_mean_squared_error(actuals, predictions)
+# print(f"RMSE: {rmse_loss:.6f}")
 
 
 dates = df_test.index[sequence_length:]
@@ -180,8 +180,21 @@ results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return"
 
 results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
 
-results.to_csv("monthly_predictions_long_lstm.csv")
+# mae, rmse only for the specific date range
+fixed_start = "2023-01-01"
+fixed_end = "2025-01-01"
+results_filtered = results.loc[(results.index >= fixed_start) & (results.index <= fixed_end)]
+
+print(f'results_filtered: {results_filtered}')
+
+mae_loss = mean_absolute_error(results_filtered["Actual_Log_Return"], results_filtered["Predicted_Log_Return"])
+print(f"MAE: {mae_loss:.6f}")
+
+rmse_loss = root_mean_squared_error(results_filtered["Actual_Log_Return"], results_filtered["Predicted_Log_Return"])
+print(f"RMSE: {rmse_loss:.6f}")
+
+results_filtered.to_csv("monthly_predictions_long_lstm.csv")
 
 
 print("\nSample Predictions:")
-print(results.head(10))
+print(results_filtered.head(10))

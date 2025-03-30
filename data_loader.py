@@ -98,6 +98,8 @@ def load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_STAR
         "Volume": "sum"
     })
 
+    monthly_df['Index'] = index_name  # For the backtesting
+
     # Monthly Log Returns
     monthly_df["Log_Returns"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(1))
     monthly_df["Log_Returns_Next_Month"] = monthly_df["Log_Returns"].shift(-1)

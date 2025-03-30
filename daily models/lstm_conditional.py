@@ -90,13 +90,13 @@ torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 TRAIN_START_DATE = "2006-01-01"
-TRAIN_END_DATE = "2019-12-31"
+TRAIN_END_DATE = "2019-11-30"
 
-VALID_START_DATE = "2020-01-01"
-VALID_END_DATE = "2023-01-23"
+VALID_START_DATE = "2019-12-01"
+VALID_END_DATE = "2022-08-31"
 
-TEST_START_DATE = "2023-01-24"
-TEST_END_DATE = "2025-01-24"
+TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
+TEST_END_DATE = "2025-01-01"
 
 combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = conditional_lstm_load_multiple_indices('daily', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
@@ -172,11 +172,11 @@ index_labels = np.array(index_labels)
 print(index_labels)
 print('-' * 100)
 
-mae_loss = mean_absolute_error(actuals, predictions)
-print(f"MAE: {mae_loss:.6f}")
-
-rmse_loss = root_mean_squared_error(actuals, predictions)
-print(f"RMSE: {rmse_loss:.6f}")
+# mae_loss = mean_absolute_error(actuals, predictions)
+# print(f"MAE: {mae_loss:.6f}")
+#
+# rmse_loss = root_mean_squared_error(actuals, predictions)
+# print(f"RMSE: {rmse_loss:.6f}")
 
 # Map index numbers back to index names
 index_mapping = {0: "DJA", 1: "GSPC", 2: "IXIC", 3: "NYA"}
@@ -188,9 +188,21 @@ results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return"
 
 results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
 
+# mae, rmse only for the specific date range
+fixed_start = "2023-01-01"
+fixed_end = "2025-01-01"
+results_filtered = results.loc[(results.index >= fixed_start) & (results.index <= fixed_end)]
 
-results.to_csv("predictions_conditional_lstm.csv")  # Save predictions for backtesting
+print(f'results_filtered: {results_filtered}')
+
+mae_loss = mean_absolute_error(results_filtered["Actual_Log_Return"], results_filtered["Predicted_Log_Return"])
+print(f"MAE: {mae_loss:.6f}")
+
+rmse_loss = root_mean_squared_error(results_filtered["Actual_Log_Return"], results_filtered["Predicted_Log_Return"])
+print(f"RMSE: {rmse_loss:.6f}")
+
+results_filtered.to_csv("predictions_conditional_lstm.csv")  # Save predictions for backtesting
 
 
 print("\nSample Predictions:")
-print(results.head(10))
+print(results_filtered.head(10))

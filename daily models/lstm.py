@@ -74,13 +74,13 @@ torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 TRAIN_START_DATE = "2006-01-01"
-TRAIN_END_DATE = "2019-12-31"
+TRAIN_END_DATE = "2019-11-30"
 
-VALID_START_DATE = "2020-01-01"
-VALID_END_DATE = "2023-01-23"
+VALID_START_DATE = "2019-12-01"
+VALID_END_DATE = "2022-08-31"
 
-TEST_START_DATE = "2023-01-24"
-TEST_END_DATE = "2025-01-24"
+TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
+TEST_END_DATE = "2025-01-01"
 
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name = load_daily_data_log_returns(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
@@ -99,7 +99,7 @@ num_layers = None  # Set your own value
 dropout = None  # Set your own value5
 learning_rate = 0.0019594494528614313
 batch_size = None  # Set your own value
-epochs = 100
+epochs = 10
 sequence_length = 50
 
 
@@ -117,13 +117,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=learning_rate * 10,  # Peak LR (usually 10x initial LR)
-    steps_per_epoch=len(train_loader),  # Number of batches per epoch
-    epochs=epochs,  # Total number of epochs
-    pct_start=0.3,  # Percentage of cycle spent increasing LR
-    anneal_strategy='cos',  # Cosine annealing for smooth decay
-    div_factor=10,  # Initial LR is max_lr / div_factor
-    final_div_factor=100,  # Final LR is max_lr / final_div_factor
+    max_lr=learning_rate * 10,
+    steps_per_epoch=len(train_loader),
+    epochs=epochs,
+    pct_start=0.3,
+    anneal_strategy='cos',
+    div_factor=10,
+    final_div_factor=100,
 )
 
 
@@ -177,11 +177,11 @@ predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
 print('-' * 100)
 
-mae_loss = mean_absolute_error(actuals, predictions)
-print(f"MAE: {mae_loss:.6f}")
-
-rmse_loss = root_mean_squared_error(actuals, predictions)
-print(f"RMSE: {rmse_loss:.6f}")
+# mae_loss = mean_absolute_error(actuals, predictions)
+# print(f"MAE: {mae_loss:.6f}")
+#
+# rmse_loss = root_mean_squared_error(actuals, predictions)
+# print(f"RMSE: {rmse_loss:.6f}")
 
 dates = df_test.index[sequence_length:]
 index_names = df_test["Index"].iloc[sequence_length:].tolist()
@@ -191,7 +191,20 @@ results = pd.DataFrame({"Predicted_Log_Return": predictions, "Actual_Log_Return"
 
 results["Adjusted_Close"] = results.apply(lambda row: df_test.loc[(df_test.index == row.name) & (df_test["Index"] == row["Index"]), "Adjusted_close"].values[0], axis=1)
 
-results.to_csv(f"predictions_basic_lstm_{index_name}.csv")
+# mae, rmse only for the specific date range
+fixed_start = "2023-01-01"
+fixed_end = "2025-01-01"
+results_filtered = results.loc[(results.index >= fixed_start) & (results.index <= fixed_end)]
+
+print(f'results_filtered: {results_filtered}')
+
+mae_loss = mean_absolute_error(results_filtered["Actual_Log_Return"], results_filtered["Predicted_Log_Return"])
+print(f"MAE: {mae_loss:.6f}")
+
+rmse_loss = root_mean_squared_error(results_filtered["Actual_Log_Return"], results_filtered["Predicted_Log_Return"])
+print(f"RMSE: {rmse_loss:.6f}")
+
+results_filtered.to_csv(f"predictions_basic_lstm_{index_name}.csv")
 
 print("\nSample Predictions:")
-print(results.head(10))
+print(results_filtered.head(10))

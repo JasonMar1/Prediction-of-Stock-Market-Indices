@@ -98,28 +98,28 @@ print(trainer.optimizers)
 
 # 1) Predict median, unpacking all returned values
 #    predict(...) returns: (predictions, x, y, index, decoder_lengths)
-preds, x, y, index, decoder_lengths = model.predict(
+predictions, x, y, index, decoder_lengths = model.predict(
     test_loader,
     mode="prediction",
     return_x=True,
     return_y=False,               # we don’t actually need y here
-    return_index=True,            # returns group index if you want it
+    return_index=True,            # returns group index
     return_decoder_lengths=False  # not needed for single-step forecasts
 )
 
 # extract numpy arrays
-median = preds[:, 0].cpu().numpy()  # [N] median forecasts
+median = predictions[:, 0].cpu().numpy()  # [N] median forecasts
 index_ids = x["groups"].squeeze(-1).cpu().numpy()  # [N]
 time_idxs = x["decoder_time_idx"][:, 0].cpu().numpy()  # [N]
 
-# 2) build DataFrame of median forecasts
+# build DataFrame of median forecasts
 pred_df = pd.DataFrame({
     "index_id": index_ids,
     "time_idx": time_idxs,
     "predicted_median": median
 })
 
-# 3) merge with truths
+# merge with truths
 true_df = df_test[["index_id", "time_idx", "date", "target"]].rename(columns={"target": "true"})
 index_mapping = {"DJA": 0, "GSPC": 1, "IXIC": 2, "NYA": 3}
 
@@ -134,7 +134,7 @@ rmse = np.sqrt(mean_squared_error(results_df["true"], results_df["predicted_medi
 print(f"MAE:  {mae:.6f}")
 print(f"RMSE: {rmse:.6f}")
 
-# 5) save
+
 results_df[["index_id", "date", "true", "predicted_median"]].to_csv(
     "deepar_predictions.csv", index=False
 )

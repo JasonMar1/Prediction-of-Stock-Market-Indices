@@ -31,14 +31,16 @@ prediction_length = 1  # 1-day ahead
 
 # Optuna objective function
 def objective(trial):
-    print(f"\n🔍 Trial {trial.number} - Trying parameters: {trial.params}")
+    print(f"\n Trial {trial.number}")
 
-    max_encoder_length = trial.suggest_int("max_encoder_length", 10, 60)
-    learning_rate = trial.suggest_loguniform("learning_rate", 1e-4, 1e-2)
-    hidden_size = trial.suggest_int("hidden_size", 16, 128)
+    # Define hyperparameter search space
+    max_encoder_length = trial.suggest_int("max_encoder_length", 10, 60, step=5)
+    learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
+    hidden_size = trial.suggest_int("hidden_size", 32, 512, log=True)
     rnn_layers = trial.suggest_int("rnn_layers", 1, 3)
-    dropout = trial.suggest_float("dropout", 0.0, 0.5)
-    max_epochs = trial.suggest_int("max_epochs", 10, 100)
+    dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
+    batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
+    max_epochs = trial.suggest_int("max_epochs", 10, 100, step=5)
 
     train_dataset = TimeSeriesDataSet(
         df_train,
@@ -59,8 +61,8 @@ def objective(trial):
         train_dataset, df_val, stop_randomization=True
     )
 
-    train_loader = train_dataset.to_dataloader(train=True, batch_size=64, num_workers=0)
-    val_loader = val_dataset.to_dataloader(train=False, batch_size=64, num_workers=0)
+    train_loader = train_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+    val_loader = val_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
     model = DeepAR.from_dataset(
         train_dataset,
@@ -86,11 +88,9 @@ def objective(trial):
     val_loss = trainer.callback_metrics["val_loss"].item()
     return val_loss
 
-# Run Optuna
 study = optuna.create_study(direction="minimize")
 study.optimize(objective, n_trials=300)
 
-# Best result
-print("Best hyperparameters found:")
-for k, v in study.best_params.items():
-    print(f"{k}: {v}")
+
+print("Best hyperparameters:")
+print(study.best_trial)

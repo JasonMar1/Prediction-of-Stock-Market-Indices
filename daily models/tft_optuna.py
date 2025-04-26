@@ -1,9 +1,10 @@
-from data_loader_DeepAR import return_splits
+from data_loader_tft import return_splits_tft
 import torch
 import optuna
 
-from pytorch_forecasting import TimeSeriesDataSet, DeepAR, GroupNormalizer
-from pytorch_forecasting.metrics import NormalDistributionLoss
+from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, GroupNormalizer
+from pytorch_forecasting.metrics import QuantileLoss
+
 from lightning.pytorch import Trainer, seed_everything
 from lightning.pytorch.callbacks import EarlyStopping
 
@@ -16,7 +17,7 @@ def objective(trial):
     max_encoder_length = trial.suggest_int("max_encoder_length", 10, 60, step=5)
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     hidden_size = trial.suggest_int("hidden_size", 32, 512, log=True)
-    rnn_layers = trial.suggest_int("rnn_layers", 1, 3)
+    attention_head_size = trial.suggest_int("attention_head_size", 1, 4)
     dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
     batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
     epochs = trial.suggest_int("epochs", 10, 100, step=5)
@@ -35,6 +36,9 @@ def objective(trial):
         time_varying_unknown_reals=["target"],   # Real-valued features that are not known in advance and must be predicted
         target_normalizer=GroupNormalizer(groups=["index_id"]),  # z-score
         allow_missing_timesteps=True,
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True
     )
 
     val_dataset = TimeSeriesDataSet.from_dataset(
@@ -44,13 +48,14 @@ def objective(trial):
     train_loader = train_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=6, persistent_workers=True)
     val_loader = val_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=6, persistent_workers=True)
 
-    model = DeepAR.from_dataset(
+    model = TemporalFusionTransformer.from_dataset(
         train_dataset,
         learning_rate=learning_rate,
         hidden_size=hidden_size,
-        rnn_layers=rnn_layers,
+        attention_head_size=attention_head_size,
         dropout=dropout,
-        loss=NormalDistributionLoss(),
+        loss=QuantileLoss(),
+        output_size=7,  # predict 7 quantiles
         log_interval=-1,
         log_val_interval=-1
     )
@@ -91,7 +96,7 @@ if __name__ == "__main__":
     TEST_START_DATE = "2023-01-24"
     TEST_END_DATE = "2025-01-24"
 
-    df_train, df_val, df_test, feature_columns = return_splits(
+    df_train, df_val, df_test, feature_columns = return_splits_tft(
         TRAIN_START_DATE, TRAIN_END_DATE,
         VALID_START_DATE, VALID_END_DATE,
         TEST_START_DATE, TEST_END_DATE
@@ -100,7 +105,7 @@ if __name__ == "__main__":
     prediction_length = 1  # 1-day ahead
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=500, callbacks=[log_best_trial])
+    study.optimize(objective, n_trials=100, callbacks=[log_best_trial])
 
     print("Best hyperparameters:")
     print(study.best_trial)

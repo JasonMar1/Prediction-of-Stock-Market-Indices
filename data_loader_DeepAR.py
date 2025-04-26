@@ -86,7 +86,6 @@ def load_all_indices_deepar(TRAIN_START_DATE, TEST_END_DATE):
     return df_all
 
 def return_splits(TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
-
     df_all = load_all_indices_deepar(TRAIN_START_DATE, TEST_END_DATE)
 
     df_all["date"] = pd.to_datetime(df_all["date"])

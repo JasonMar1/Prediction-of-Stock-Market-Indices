@@ -6,6 +6,7 @@ import numpy as np
 
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, GroupNormalizer
 from pytorch_forecasting.metrics import QuantileLoss
+from pytorch_forecasting.utils import to_list
 
 from lightning.pytorch import Trainer, seed_everything
 from lightning.pytorch.callbacks import EarlyStopping
@@ -15,13 +16,13 @@ if __name__ == "__main__":
     seed_everything(42, workers=True)
 
     TRAIN_START_DATE = "2006-01-01"
-    TRAIN_END_DATE = "2019-12-31"
+    TRAIN_END_DATE = "2019-11-30"
 
-    VALID_START_DATE = "2020-01-01"
-    VALID_END_DATE = "2023-01-23"
+    VALID_START_DATE = "2019-12-01"
+    VALID_END_DATE = "2022-08-31"
 
-    TEST_START_DATE = "2023-01-24"
-    TEST_END_DATE = "2025-01-24"
+    TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
+    TEST_END_DATE = "2025-01-01"
 
     df_train, df_val, df_test, feature_columns = return_splits_tft(TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
@@ -58,27 +59,27 @@ if __name__ == "__main__":
         stop_randomization=True
     )
 
-    batch_size = 112
+    batch_size = None  # Set your own value
     train_loader = train_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=8, persistent_workers=True)
     val_loader = val_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=8, persistent_workers=True)
     test_loader = test_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=8, persistent_workers=True)
 
     model = TemporalFusionTransformer.from_dataset(
         train_dataset,
-        learning_rate=0.0009144593723706877,
+        learning_rate=0.0025692481259333355,
         optimizer="adam",
-        dropout=0.5,
-        hidden_size=43,
-        attention_head_size=1,
+        dropout=None  # Set your own value,
+        hidden_size=46,
+        attention_head_size=None  # Set your own value,
         loss=QuantileLoss(),
-        output_size=7,  # Προβλέπει quantiles 0.1, 0.2, ..., 0.9
+        output_size=7,  # Προβλεπει quantiles 0.1, 0.2, ..., 0.9
         log_interval=-1,
         log_val_interval=-1
     )
 
     early_stop = EarlyStopping(monitor="val_loss", patience=5)
     trainer = Trainer(
-        max_epochs=2,
+        max_epochs=10,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=1,
         callbacks=[early_stop],
@@ -93,23 +94,18 @@ if __name__ == "__main__":
         test_loader,
         mode="raw",
         return_x=True
-    )  # mode="raw" → επιστρέφει όλα τα quantiles (όλο το output tensor) και μετά επιλέγεις ποιο θέλεις.
+    )  # mode="raw" επιστρέφει όλα τα quantiles (όλο το output tensor) και μετά επιλέγω ποιο θέλω.
 
-    from pytorch_forecasting.utils import to_list
 
-    # Step 1: Check if Output object
     if hasattr(predictions, "prediction"):
-        predictions = predictions.prediction
+        predictions = predictions.prediction  # Extract απο το Output object το tensor με τις προβλέψεις
 
-    # Step 2: Ensure it's list
     predictions = to_list(predictions)
+    predictions = torch.cat(predictions, dim=0)  # Merge
 
-    # Step 3: Merge
-    predictions = torch.cat(predictions, dim=0)
-
-    print(predictions.shape)
-    print(predictions[0, 0, :])  # Δείγμα predictions για ένα δείγμα και ένα timestep
-    print(predictions[0, 0, 4])
+    # print(predictions.shape)
+    # print(predictions[0, 0, :])
+    # print(predictions[0, 0, 4])  # 0.5 quantile
 
     median = predictions[:, 0, 4].cpu().numpy()
     index_ids = x["groups"].squeeze(-1).cpu().numpy()  # [N]

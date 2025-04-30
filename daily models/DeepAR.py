@@ -15,13 +15,13 @@ if __name__ == "__main__":
     seed_everything(42, workers=True)
 
     TRAIN_START_DATE = "2006-01-01"
-    TRAIN_END_DATE = "2019-12-31"
+    TRAIN_END_DATE = "2019-11-30"
 
-    VALID_START_DATE = "2020-01-01"
-    VALID_END_DATE = "2023-01-23"
+    VALID_START_DATE = "2019-12-01"
+    VALID_END_DATE = "2022-08-31"
 
-    TEST_START_DATE = "2023-01-24"
-    TEST_END_DATE = "2025-01-24"
+    TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
+    TEST_END_DATE = "2025-01-01"
 
     df_train, df_val, df_test, feature_columns = return_splits(TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 

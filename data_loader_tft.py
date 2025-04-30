@@ -1,16 +1,18 @@
-import os
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 selected_indices = {
-    "A": "DJA",
-    "C": "GSPC",
-    "D": "IXIC",
-    "E": "NYA",
+    "A": "DJA",  # Dow Jones Industrial Average
+    "C": "GSPC",  # S&P 500
+    "D": "IXIC",  # NASDAQ Composite
+    "E": "NYA",  # NYSE Composite
 }
+
+indices_conditional = {v: os.path.join(BASE_DIR, "index_data", f"{v}.INDX.csv") for v in selected_indices.values()}
+
 
 def compute_RSI(df, period=14):
     delta = df["Adjusted_close"].diff()
@@ -26,7 +28,7 @@ def compute_RSI(df, period=14):
 
 
 def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
-    file_path = os.path.join(BASE_DIR, "index_data", f"{index_name}.INDX.csv")
+    file_path = indices_conditional[index_name]
 
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
@@ -38,12 +40,13 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
     df["Log_Returns_1"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(1))
     df["target"] = df["Log_Returns_1"].shift(-1)
 
+    """ Extra Features"""
     df["Log_Returns_5"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(5))
     df["Log_Returns_10"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(10))
     df["Log_Returns_20"] = np.log(df["Adjusted_close"]) - np.log(df["Adjusted_close"].shift(20))
 
     df["Volatility"] = df["Log_Returns_1"].rolling(window=10).std()
-    df["RSI_14"] = compute_RSI(df)
+    df["RSI_14"] = compute_RSI(df, period=14)
 
     df["SMA_5"] = df["Adjusted_close"].rolling(window=5).mean()
     df["SMA_20"] = df["Adjusted_close"].rolling(window=20).mean()
@@ -52,7 +55,7 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
     df["EMA_10"] = df["Adjusted_close"].ewm(span=10, adjust=False).mean()
     df["EMA_50"] = df["Adjusted_close"].ewm(span=50, adjust=False).mean()
 
-    df["MA_Crossover"] = (df["SMA_5"] > df["SMA_20"]).astype(int)
+    df["MA_Crossover"] = (df["SMA_5"] > df["SMA_20"])
 
     # Extra metadata
     df["index_id"] = index_name

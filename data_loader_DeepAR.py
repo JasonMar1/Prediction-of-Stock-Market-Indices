@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import os
 
-# Get the absolute path of the project's root directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 selected_indices = {
@@ -12,7 +11,6 @@ selected_indices = {
     "E": "NYA",  # NYSE Composite
 }
 
-index_mapping = {"DJA": 0, "GSPC": 1, "IXIC": 2, "NYA": 3} # For the torch.nn.Embedding
 indices_conditional = {v: os.path.join(BASE_DIR, "index_data", f"{v}.INDX.csv") for v in selected_indices.values()}
 
 
@@ -59,7 +57,7 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
 
     df["MA_Crossover"] = df["SMA_5"] > df["SMA_20"]
 
-    # Add metadata
+    # Extra metadata
     df["index_id"] = index_name
     df["date"] = df.index
     df["day_of_week"] = df["date"].dt.dayofweek.astype(str)

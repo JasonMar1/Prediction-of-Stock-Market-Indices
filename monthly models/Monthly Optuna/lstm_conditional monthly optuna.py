@@ -101,8 +101,10 @@ def objective(trial):
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
     seq_length = trial.suggest_int("sequence_length", 2, 12)
-    epochs = 200
-    patience = 30
+    epochs = trial.suggest_int("epochs", 10, 100, step=5)
+
+    # epochs = 200
+    patience = 20
 
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1,
                  dropout=dropout,

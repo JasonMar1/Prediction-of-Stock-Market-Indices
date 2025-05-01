@@ -94,13 +94,44 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_nam
 # epochs = 100
 # sequence_length = 50
 
-hidden_size = 35
+# GSPC:
+# hidden_size = 36
+# num_layers = None  # Set your own value
+# dropout = 0.15
+# learning_rate = 0.0004472515981751991
+# batch_size = 32
+# epochs = 80
+# seq_length = 11
+
+
+# NYA:
+# hidden_size = 37
+# num_layers = None  # Set your own value
+# dropout = 0.15
+# learning_rate = 0.0005769015480623682
+# batch_size = None  # Set your own value
+# epochs = 95
+# seq_length = 11
+
+
+# IXIC:
+# hidden_size = 35
+# num_layers = 2
+# dropout = 0.05
+# learning_rate = 0.0004103668353380418
+# batch_size = None  # Set your own value
+# epochs = 40
+# seq_length = 11
+
+
+# DJA
+hidden_size = 105
 num_layers = None  # Set your own value
-dropout = 0.05
-learning_rate = 0.0023732050740900923
-batch_size = 32
-epochs = 200
-sequence_length = None  # Set your own value
+dropout = None  # Set your own value
+learning_rate = 0.0004489841113085169
+batch_size = None  # Set your own value
+epochs = 35
+seq_length = 11
 
 
 print('-' * 100)
@@ -115,16 +146,16 @@ train_loader, valid_loader, test_loader, test_dates = get_dataloaders(X_train, y
 train_losses = []
 valid_losses = []
 
-# scheduler = optim.lr_scheduler.OneCycleLR(
-#     optimizer,
-#     max_lr=learning_rate * 10,
-#     steps_per_epoch=len(train_loader),
-#     epochs=epochs,
-#     pct_start=0.3,
-#     anneal_strategy='cos',
-#     div_factor=10,
-#     final_div_factor=100,
-# )
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr= ,
+    steps_per_epoch=len(train_loader),
+    epochs=epochs,
+    pct_start=,
+    anneal_strategy='cos',
+    div_factor=,
+    final_div_factor=,
+)
 
 
 for epoch in range(epochs):
@@ -138,7 +169,7 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
-        # scheduler.step()
+        scheduler.step()
 
         train_loss.append(loss.item())
 

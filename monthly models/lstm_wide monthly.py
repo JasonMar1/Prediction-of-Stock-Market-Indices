@@ -101,13 +101,13 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lst
 # epochs = 100
 # sequence_length = 60
 
-hidden_size = 35
-num_layers = 3
-dropout = 0.1
-learning_rate = 0.0018664709318261762
-batch_size = 32
-epochs = 200
-sequence_length = None  # Set your own value
+hidden_size = 189
+num_layers = 2
+dropout = 0.15
+learning_rate = 0.0012738931413019084
+batch_size = None  # Set your own value
+epochs = 35
+sequence_length = 11
 
 
 print('-' * 100)
@@ -122,13 +122,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=learning_rate * 10,
+    max_lr=0.014007004856172322,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.3,
+    pct_start=0.29987160193861884,
     anneal_strategy='cos',
-    div_factor=10,
-    final_div_factor=100,
+    div_factor=22,
+    final_div_factor=15,
 )
 
 for epoch in range(epochs):

@@ -87,13 +87,13 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # #OPTUNA
-hidden_size = 62
-num_layers = None  # Set your own value
-dropout = 0.5
-learning_rate = 0.00750023300433813
+hidden_size = 36
+num_layers = 2
+dropout = 0.30
+learning_rate = 0.00013873092061972167
 batch_size = None  # Set your own value
-epochs = 200
-sequence_length = None  # Set your own value
+epochs = 20
+sequence_length = 12
 
 
 print('-' * 100)
@@ -106,16 +106,16 @@ train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_va
 train_losses = []
 valid_losses = []
 
-# scheduler = optim.lr_scheduler.OneCycleLR(
-#     optimizer,
-#     max_lr=learning_rate * 10,
-#     steps_per_epoch=len(train_loader),
-#     epochs=epochs,
-#     pct_start=0.3,
-#     anneal_strategy='cos',
-#     div_factor=10,
-#     final_div_factor=100,
-# )
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=0.0015973948581189984,
+    steps_per_epoch=len(train_loader),
+    epochs=epochs,
+    pct_start=0.30073321560560423,
+    anneal_strategy='cos',
+    div_factor=5,
+    final_div_factor=330,
+)
 
 for epoch in range(epochs):
     model.train()
@@ -128,7 +128,7 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
-        # scheduler.step()
+        scheduler.step()
 
         train_loss.append(loss.item())
 

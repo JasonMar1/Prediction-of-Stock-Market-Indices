@@ -104,12 +104,12 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 # OPTUNA
-hidden_size = 165
-num_layers = None  # Set your own value
-dropout = 0.1
-learning_rate = 0.0022318940295642953
+hidden_size = 256
+num_layers = 2
+dropout = 0.5
+learning_rate = 0.009918593561895145
 batch_size = None  # Set your own value
-epochs = 200
+epochs = 90
 sequence_length = 12
 
 print('-' * 100)
@@ -122,6 +122,17 @@ train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, inde
 train_losses = []
 valid_losses = []
 
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=0.10872146275785138,
+    steps_per_epoch=len(train_loader),
+    epochs=epochs,
+    pct_start=0.42775150962033,
+    anneal_strategy='cos',
+    div_factor=7,
+    final_div_factor=324,
+)
+
 for epoch in range(epochs):
     model.train()
     train_loss = []
@@ -133,6 +144,8 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
+
         train_loss.append(loss.item())
 
     avg_train_loss = np.mean(train_loss)

@@ -8,7 +8,6 @@ from torch.utils.data import TensorDataset, DataLoader
 from data_loader_conditional import conditional_lstm_load_multiple_indices, combine_and_sort_data
 import matplotlib.pyplot as plt
 
-
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout, num_indices, embedding_dim):
         super(LSTM, self).__init__()
@@ -103,7 +102,6 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-# OPTUNA
 hidden_size = 256
 num_layers = 2
 dropout = 0.5

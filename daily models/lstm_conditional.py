@@ -122,6 +122,17 @@ train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, inde
 train_losses = []
 valid_losses = []
 
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=learning_rate * 10,
+    steps_per_epoch=len(train_loader),
+    epochs=epochs,
+    pct_start=0.3,
+    anneal_strategy='cos',
+    div_factor=10,
+    final_div_factor=100,
+)
+
 for epoch in range(epochs):
     model.train()
     train_loss = []
@@ -133,6 +144,8 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
+
         train_loss.append(loss.item())
 
     avg_train_loss = np.mean(train_loss)

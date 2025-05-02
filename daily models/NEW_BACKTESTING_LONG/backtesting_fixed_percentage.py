@@ -8,7 +8,7 @@ portfolio_history = []
 cash_fraction = 0.5
 
 
-df_predictions = pd.read_csv("../predictions_long_lstm.csv", parse_dates=["Date"], index_col="Date")
+df_predictions = pd.read_csv("../Daily Predictions/predictions_long_lstm.csv", parse_dates=["Date"], index_col="Date")
 
 # print(df_predictions)
 

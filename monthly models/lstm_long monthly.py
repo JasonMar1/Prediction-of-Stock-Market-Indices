@@ -8,7 +8,6 @@ from torch.utils.data import TensorDataset, DataLoader
 from data_loader_long import long_lstm_load_multiple_indices, combine_and_sort_data
 import matplotlib.pyplot as plt
 
-
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout):
         super(LSTM, self).__init__()

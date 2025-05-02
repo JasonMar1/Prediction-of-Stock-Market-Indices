@@ -85,14 +85,6 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name = load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-# #OPTUNA
-# hidden_size = 53
-# num_layers = 3
-# dropout = 0.1
-# learning_rate = 0.0001476
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 50
 
 # GSPC:
 # hidden_size = 36
@@ -101,7 +93,19 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_nam
 # learning_rate = 0.0004472515981751991
 # batch_size = 32
 # epochs = 80
-# seq_length = 11
+# sequence_length = 11
+
+# GSPC:
+# scheduler = optim.lr_scheduler.OneCycleLR(
+#     optimizer,
+#     max_lr=0.003898374368455042,
+#     steps_per_epoch=len(train_loader),
+#     epochs=epochs,
+#     pct_start=0.4720971530682338,
+#     anneal_strategy='cos',
+#     div_factor=None  # Set your own value,
+#     final_div_factor=None  # Set your own value2,
+# )
 
 
 # NYA:
@@ -111,7 +115,21 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_nam
 # learning_rate = 0.0005769015480623682
 # batch_size = None  # Set your own value
 # epochs = 95
-# seq_length = 11
+# sequence_length = 11
+
+# NYA:
+# scheduler = optim.lr_scheduler.OneCycleLR(
+#     optimizer,
+#     max_lr=0.00856925708144131,
+#     steps_per_epoch=len(train_loader),
+#     epochs=epochs,
+#     pct_start=0.3266540387695752,
+#     anneal_strategy='cos',
+#     div_factor=5,
+#     final_div_factor=179,
+# )
+
+
 
 
 # IXIC:
@@ -121,7 +139,20 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_nam
 # learning_rate = 0.0004103668353380418
 # batch_size = None  # Set your own value
 # epochs = 40
-# seq_length = 11
+# sequence_length = 11
+
+#IXIC
+# scheduler = optim.lr_scheduler.OneCycleLR(
+#     optimizer,
+#     max_lr=0.003891991523304111,
+#     steps_per_epoch=len(train_loader),
+#     epochs=epochs,
+#     pct_start=0.4364874704223131,
+#     anneal_strategy='cos',
+#     div_factor=20,
+#     final_div_factor=464,
+# )
+
 
 
 # DJA
@@ -131,8 +162,20 @@ dropout = None  # Set your own value
 learning_rate = 0.0004489841113085169
 batch_size = None  # Set your own value
 epochs = 35
-seq_length = 11
+sequence_length = 11
 
+
+# #DJA
+# scheduler = optim.lr_scheduler.OneCycleLR(
+#     optimizer,
+#     max_lr=0.0028141056829567353,
+#     steps_per_epoch=len(train_loader),
+#     epochs=epochs,
+#     pct_start=0.45680862732011157,
+#     anneal_strategy='cos',
+#     div_factor=None  # Set your own value,
+#     final_div_factor=372,
+# )
 
 print('-' * 100)
 
@@ -148,13 +191,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr= ,
+    max_lr=0.0028141056829567353,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=,
+    pct_start=0.45680862732011157,
     anneal_strategy='cos',
-    div_factor=,
-    final_div_factor=,
+    div_factor=None  # Set your own value,
+    final_div_factor=372,
 )
 
 

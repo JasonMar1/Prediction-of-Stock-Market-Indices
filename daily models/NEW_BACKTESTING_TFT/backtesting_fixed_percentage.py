@@ -5,19 +5,14 @@ import pandas as pd
 
 portfolio_history = []
 
+cash_fraction = 0.5
 
-csv_files = [
-    "../Monthly Predictions/monthly_predictions_basic_lstm_DJA.csv",
-    "../Monthly Predictions/monthly_predictions_basic_lstm_GSPC.csv",
-    "../Monthly Predictions/monthly_predictions_basic_lstm_IXIC.csv",
-    "../Monthly Predictions/monthly_predictions_basic_lstm_NYA.csv"
-]
 
-df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]
-df_predictions = pd.concat(df_list).sort_values(by="Date")
-df_predictions.set_index("Date", inplace=True)
+df_predictions = pd.read_csv("../Daily Predictions/tft_predictions.csv", parse_dates=["Date"], index_col="Date")
 
-print(df_predictions)
+# print(df_predictions)
+
+index_mapping = {"DJA": 0, "GSPC": 1, "IXIC": 2, "NYA": 3}
 
 
 def calculate_portfolio_value(current_date, cash, position): # without selling any positions
@@ -27,13 +22,12 @@ def calculate_portfolio_value(current_date, cash, position): # without selling a
         close_price_row = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
         # print(close_price_row)
         if not close_price_row.empty:
-            close_price = close_price_row["Adjusted_Close"].values[0]  # convert the pd series to np array
+            close_price = close_price_row["Adjusted_close"].values[0]  # convert the pd series to np array
             total_value += shares * close_price
     return total_value
 
 
 def rebalance_portfolio(current_date, strategy_type, cash, position):
-
     next_day = df_predictions.index[df_predictions.index > current_date].min()
 
     next_day_predictions = df_predictions[df_predictions.index == next_day]
@@ -42,34 +36,32 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
 
     selected_indices = index_scores[index_scores > 0].index.tolist()
 
-    # Sell everything
+    # Sell the non selected_indices
     for index in position.keys():
-        if strategy_type == "full_rebalancing":
+        if index not in selected_indices:
             close_price_row_sell = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
 
             if not close_price_row_sell.empty:
-                close_price_sell = close_price_row_sell["Adjusted_Close"].values[0]
+                close_price_sell = close_price_row_sell["Adjusted_close"].values[0]
 
                 if close_price_sell > 0 and position[index] > 0:
                         cash += close_price_sell * position[index]
-                        if strategy_type == "full_rebalancing":
-                            position[index] = 0
-
+                        position[index] = 0
 
     if selected_indices:
-        if strategy_type == "full_rebalancing":
-            allocation_per_index = cash / len(selected_indices) if cash > 0 else 0
+        if strategy_type == "fixed_percentage":
+            allocation_per_index = (cash * cash_fraction) / len(selected_indices) if cash > 0 else 0
 
 
         for index in selected_indices:
             close_price_row_buy = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
 
             if not close_price_row_buy.empty:
-                close_price_buy = close_price_row_buy["Adjusted_Close"].values[0]
+                close_price_buy = close_price_row_buy["Adjusted_close"].values[0]
 
                 if close_price_buy > 0 and allocation_per_index > 0:
                     shares_to_buy = math.floor(allocation_per_index / close_price_buy)
-                    position[index] =  shares_to_buy  # Buy shares
+                    position[index] +=  shares_to_buy  # Buy shares
                     cash -= shares_to_buy * close_price_buy
 
 
@@ -77,7 +69,7 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
     return cash, position
 
 
-strategy = "full_rebalancing"
+strategy = "fixed_percentage"
 
 print(f"\n{'-'*20} Running Strategy: {strategy.upper()} {'-'*20}")
 cash = 100000

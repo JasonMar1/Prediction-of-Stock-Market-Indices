@@ -21,10 +21,10 @@ TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length eq
 TEST_END_DATE = "2025-01-01"
 
 
-combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test, df_test, features = long_lstm_load_multiple_indices('daily', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test, df_test, features = long_lstm_load_multiple_indices('daily', True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 # Align and Sort Data
-X_train, y_train, X_valid, y_valid, X_test, y_test = combine_and_sort_data(combined_X_train, combined_y_train, combined_X_valid, combined_y_valid, combined_X_test, combined_y_test)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 
 class LSTM(nn.Module):
@@ -78,7 +78,7 @@ def objective(trial):
     dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
-    seq_length = trial.suggest_int("sequence_length", 20, 60, step=5)
+    seq_length = trial.suggest_int("sequence_length", 10, 60, step=5)
     epochs = trial.suggest_int("epochs", 10, 100, step=5)
 
     # epochs = 100
@@ -134,7 +134,7 @@ def objective(trial):
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=2000)
+study.optimize(objective, n_trials=500)
 
 print("Best hyperparameters:")
 print(study.best_trial)

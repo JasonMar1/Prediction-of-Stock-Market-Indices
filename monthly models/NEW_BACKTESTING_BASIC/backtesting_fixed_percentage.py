@@ -9,10 +9,10 @@ cash_fraction = 0.5
 
 
 csv_files = [
-    "../monthly_predictions_basic_lstm_DJA.csv",
-    "../monthly_predictions_basic_lstm_GSPC.csv",
-    "../monthly_predictions_basic_lstm_IXIC.csv",
-    "../monthly_predictions_basic_lstm_NYA.csv"
+    "../Monthly Predictions/monthly_predictions_basic_lstm_DJA.csv",
+    "../Monthly Predictions/monthly_predictions_basic_lstm_GSPC.csv",
+    "../Monthly Predictions/monthly_predictions_basic_lstm_IXIC.csv",
+    "../Monthly Predictions/monthly_predictions_basic_lstm_NYA.csv"
 ]
 
 df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]

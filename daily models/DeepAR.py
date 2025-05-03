@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     df_train, df_val, df_test, feature_columns = return_splits(TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
-    max_encoder_length = 60
+    max_encoder_length = 10
     prediction_length = 1
 
     train_dataset = TimeSeriesDataSet(
@@ -55,17 +55,17 @@ if __name__ == "__main__":
         stop_randomization=True
     )
 
-    batch_size = 112
+    batch_size = None  # Set your own value
     train_loader = train_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=8, persistent_workers=True)
     val_loader = val_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=8, persistent_workers=True)
     test_loader = test_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=8, persistent_workers=True)
 
     model = DeepAR.from_dataset(
         train_dataset,
-        learning_rate=0.0009144593723706877,
+        learning_rate=0.00026136331295947005,
         optimizer="adam",
-        dropout=0.5,
-        hidden_size=43,
+        dropout=0.35,
+        hidden_size=36,
         rnn_layers=3,
         loss=NormalDistributionLoss(),
         log_interval=-1,
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     early_stop = EarlyStopping(monitor="val_loss", patience=5)
     trainer = Trainer(
-        max_epochs=10,
+        max_epochs=20,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=1,
         callbacks=[early_stop],
@@ -99,22 +99,36 @@ if __name__ == "__main__":
     pred_df = pd.DataFrame({
         "index_id": index_ids,
         "time_idx": time_idxs,
-        "predicted_median": median
+        "Predicted_Log_Return": median
     })
 
-    # merge with the real returns
-    true_df = df_test[["index_id", "time_idx", "date", "target"]].rename(columns={"target": "true"})
     index_mapping = {"DJA": 0, "GSPC": 1, "IXIC": 2, "NYA": 3}
+    inverse_index_mapping = {v: k for k, v in index_mapping.items()}
 
-    # map true_df index_id from string to int
+    # merge with the real returns
+    true_df = df_test[["index_id", "time_idx", "date", "target", "Adjusted_close"]].rename(columns={"target": "Actual_Log_Return"})
+
+    # map true_df index_id from string to int so the merge with pred_df can happen
     true_df["index_id"] = true_df["index_id"].map(index_mapping)
 
     results_df = pred_df.merge(true_df, on=["index_id", "time_idx"])
 
-    mae = mean_absolute_error(results_df["true"], results_df["predicted_median"])
-    rmse = np.sqrt(mean_squared_error(results_df["true"], results_df["predicted_median"]))
+    # Invert the index mapping to get back the names of the indices
+    results_df["Index"] = results_df["index_id"].map(inverse_index_mapping)
+    results_df.rename(columns={"date": "Date"}, inplace=True)
+
+    pd.set_option('display.max_columns', None)
+    print(results_df)
+
+    # mae, rmse only for the specific date range
+    fixed_start = "2023-01-01"
+    fixed_end = "2025-01-01"
+    results_df = results_df[(results_df["Date"] >= fixed_start) & (results_df["Date"] <= fixed_end)]
+
+    mae = mean_absolute_error(results_df["Actual_Log_Return"], results_df["Predicted_Log_Return"])
+    rmse = np.sqrt(mean_squared_error(results_df["Actual_Log_Return"], results_df["Predicted_Log_Return"]))
     print(f"MAE:  {mae:.6f}")
     print(f"RMSE: {rmse:.6f}")
 
-    results_df[["index_id", "date", "time_idx", "true", "predicted_median"]].to_csv("deepar_predictions.csv", index=False)
+    results_df[["Date", "Predicted_Log_Return", "Index", "Adjusted_close"]].to_csv("deepar_predictions.csv", index=False)
     print("Predictions saved to deepar_predictions.csv")

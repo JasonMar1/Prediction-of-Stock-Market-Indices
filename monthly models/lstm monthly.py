@@ -85,6 +85,10 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_name = load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
+pd.set_option('display.max_columns', None)
+print(df_test)
+
+
 
 # GSPC:
 # hidden_size = 36
@@ -162,7 +166,7 @@ dropout = None  # Set your own value
 learning_rate = 0.0004489841113085169
 batch_size = None  # Set your own value
 epochs = 35
-sequence_length = 11
+sequence_length = None  # Set your own value
 
 
 # #DJA

@@ -73,7 +73,7 @@ def objective(trial):
     dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
-    seq_length = trial.suggest_int("sequence_length", 20, 60, step=5)
+    seq_length = trial.suggest_int("sequence_length", 10, 60, step=5)
     epochs = trial.suggest_int("epochs", 10, 100, step=5)
 
     # epochs = 100
@@ -129,7 +129,7 @@ def objective(trial):
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=2000)
+study.optimize(objective, n_trials=500)
 
 print("Best hyperparameters:")
 print(study.best_trial)

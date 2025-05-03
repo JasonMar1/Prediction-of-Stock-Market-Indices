@@ -102,13 +102,15 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-hidden_size = 256
-num_layers = 2
-dropout = 0.5
-learning_rate = 0.009918593561895145
+
+hidden_size = None  # Set your own value
+num_layers = None  # Set your own value
+dropout = None  # Set your own value
+learning_rate = None  # Set your own value
 batch_size = None  # Set your own value
-epochs = 90
-sequence_length = 12
+epochs = None  # Set your own value
+sequence_length = None  # Set your own value
+
 
 print('-' * 100)
 
@@ -122,13 +124,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.10872146275785138,
+    max_lr=None  # Set your own value,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.42775150962033,
+    pct_start=None  # Set your own value,
     anneal_strategy='cos',
-    div_factor=7,
-    final_div_factor=324,
+    div_factor=None  # Set your own value,
+    final_div_factor=None  # Set your own value,
 )
 
 for epoch in range(epochs):

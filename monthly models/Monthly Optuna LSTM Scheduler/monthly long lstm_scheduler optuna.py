@@ -72,13 +72,13 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, seq_length, batch_size, 
 
 
 def objective(trial):
-    hidden_size = 36
+    hidden_size = 74
     num_layers = 2
-    dropout = 0.30
-    learning_rate = 0.00013873092061972167
-    batch_size = None  # Set your own value
-    epochs = 20
-    seq_length = 12
+    dropout = 0.1
+    learning_rate = 0.0002239903820966005
+    batch_size = 80
+    epochs = None  # Set your own value
+    seq_length = 2
 
     patience = 30
 

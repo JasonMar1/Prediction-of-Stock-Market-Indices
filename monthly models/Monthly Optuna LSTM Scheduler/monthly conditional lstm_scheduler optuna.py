@@ -97,13 +97,13 @@ def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid
 
 
 def objective(trial):
-    hidden_size = 256
-    num_layers = 2
-    dropout = 0.5
-    learning_rate = 0.009918593561895145
+    hidden_size = None  # Set your own value
+    num_layers = None  # Set your own value
+    dropout = None  # Set your own value
+    learning_rate = None  # Set your own value
     batch_size = None  # Set your own value
-    epochs = 90
-    seq_length = 12
+    epochs = None  # Set your own value
+    seq_length = 2
 
     patience = 30
 
@@ -114,7 +114,7 @@ def objective(trial):
     final_div_factor = trial.suggest_int("final_div_factor", 10, 500)
 
 
-    train_loader, valid_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid,  seq_length, batch_size, device)
+    train_loader, valid_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, seq_length, batch_size, device)
 
 
     model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, output_size=1,

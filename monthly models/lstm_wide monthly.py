@@ -84,30 +84,13 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lstm_load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-# #OPTUNA
-# hidden_size = 53
-# num_layers = 3
-# dropout = 0.1
-# learning_rate = 0.0001476
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 50
-
-# hidden_size = 133
-# num_layers = None  # Set your own value
-# dropout = 0.5
-# learning_rate = 0.001107441311830249
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 60
-
-hidden_size = 189
+hidden_size = 455
 num_layers = 2
-dropout = 0.15
-learning_rate = 0.0012738931413019084
+dropout = 0.05
+learning_rate = 0.009194514091884418
 batch_size = None  # Set your own value
-epochs = 35
-sequence_length = 11
+epochs = 100
+sequence_length = None  # Set your own value
 
 
 print('-' * 100)
@@ -122,13 +105,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.014007004856172322,
+    max_lr=0.13336433201111123,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.29987160193861884,
+    pct_start=0.3635260114918026,
     anneal_strategy='cos',
-    div_factor=22,
-    final_div_factor=15,
+    div_factor=5,
+    final_div_factor=20,
 )
 
 for epoch in range(epochs):

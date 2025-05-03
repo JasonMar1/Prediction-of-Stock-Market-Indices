@@ -85,14 +85,14 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data(combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-# #OPTUNA
-hidden_size = 36
+
+hidden_size = 74
 num_layers = 2
-dropout = 0.30
-learning_rate = 0.00013873092061972167
-batch_size = None  # Set your own value
-epochs = 20
-sequence_length = 12
+dropout = 0.1
+learning_rate = 0.0002239903820966005
+batch_size = 80
+epochs = None  # Set your own value
+sequence_length = None  # Set your own value
 
 
 print('-' * 100)
@@ -107,13 +107,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.0015973948581189984,
+    max_lr=0.001341443730202886,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.30073321560560423,
+    pct_start=0.34283202944021396,
     anneal_strategy='cos',
-    div_factor=5,
-    final_div_factor=330,
+    div_factor=None  # Set your own value,
+    final_div_factor=416,
 )
 
 for epoch in range(epochs):

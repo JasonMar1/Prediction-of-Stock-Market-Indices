@@ -65,55 +65,57 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, seq_length, batch_size, 
 
     return train_loader, valid_loader
 
+
+
 # GSPC:
-# hidden_size = 36
-# num_layers = None  # Set your own value
-# dropout = 0.15
-# learning_rate = 0.0004472515981751991
-# batch_size = 32
-# epochs = 80
-# seq_length = 11
+# hidden_size = 295
+# num_layers = 3
+# dropout = 0.0
+# learning_rate = 0.006827668738770926
+# batch_size = None  # Set your own value
+# epochs = 75
+# sequence_length = None  # Set your own value
 
 
 # NYA:
-# hidden_size = 37
-# num_layers = None  # Set your own value
-# dropout = 0.15
-# learning_rate = 0.0005769015480623682
+# hidden_size = 385
+# num_layers = 3
+# dropout = None  # Set your own value
+# learning_rate = 0.009998864221516746
 # batch_size = None  # Set your own value
-# epochs = 95
-# seq_length = 11
+# epochs = 80
+# sequence_length = None  # Set your own value
 
 
 # IXIC:
-# hidden_size = 35
-# num_layers = 2
-# dropout = 0.05
-# learning_rate = 0.0004103668353380418
-# batch_size = None  # Set your own value
-# epochs = 40
-# seq_length = 11
-
-
-# DJA
-# hidden_size = 105
+# hidden_size = 55
 # num_layers = None  # Set your own value
-# dropout = None  # Set your own value
-# learning_rate = 0.0004489841113085169
+# dropout = 0.30
+# learning_rate = 0.0001762726033427556
+# batch_size = 112
+# epochs = 45
+# sequence_length = None  # Set your own value
+
+
+# # DJA
+# hidden_size = 393
+# num_layers = 2
+# dropout = None  # Set your own value5
+# learning_rate = 0.006812818193144822
 # batch_size = None  # Set your own value
-# epochs = 35
-# seq_length = 11
+# epochs = 20
+# sequence_length = None  # Set your own value
 
 
 def objective(trial):
-    # GSPC:
-    hidden_size = 36
-    num_layers = None  # Set your own value
-    dropout = 0.15
-    learning_rate = 0.0004472515981751991
-    batch_size = 32
+    # NYA:
+    hidden_size = 385
+    num_layers = 3
+    dropout = None  # Set your own value
+    learning_rate = 0.009998864221516746
+    batch_size = None  # Set your own value
     epochs = 80
-    seq_length = 11
+    seq_length = 3
 
     patience = 30
 

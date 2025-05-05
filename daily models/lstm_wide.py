@@ -84,30 +84,13 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lstm_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-# #OPTUNA
-# hidden_size = 53
-# num_layers = 3
-# dropout = 0.1
-# learning_rate = 0.0001476
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 50
-
-# hidden_size = 133
-# num_layers = None  # Set your own value
-# dropout = 0.5
-# learning_rate = 0.001107441311830249
-# batch_size = None  # Set your own value
-# epochs = 100
-# sequence_length = 60
-
-hidden_size = 48
+hidden_size = 50
 num_layers = None  # Set your own value
-dropout = 0.4
-learning_rate = 0.003970556175073965
-batch_size = None  # Set your own value
-epochs = 100
-sequence_length = 60
+dropout = 0.5
+learning_rate = 0.0007299307755298721
+batch_size = 112
+epochs = 20
+sequence_length = None  # Set your own value0
 
 
 print('-' * 100)

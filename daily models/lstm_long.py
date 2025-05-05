@@ -86,14 +86,14 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-# #OPTUNA
-hidden_size = 40
-num_layers = None  # Set your own value
-dropout = 0.35000000000000003
-learning_rate = 0.0018955971803879526
-batch_size = 112
-epochs = 10
-sequence_length = 55
+
+hidden_size = 41
+num_layers = 3
+dropout = 0.05
+learning_rate = 0.0045968223394529896
+batch_size = None  # Set your own value
+epochs = 65
+sequence_length = 15
 
 
 print('-' * 100)

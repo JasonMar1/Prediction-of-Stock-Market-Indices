@@ -66,14 +66,60 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, seq_length, batch_size, 
     return train_loader, valid_loader
 
 
+
+# GSPC:
+# hidden_size = 217
+# num_layers = None  # Set your own value
+# dropout = 0.0
+# learning_rate = 0.004267738557652152
+# batch_size = 112
+# epochs = 35
+# seq_length = 20
+
+
+
+# NYA:
+# hidden_size = 210
+# num_layers = None  # Set your own value
+# dropout = 0.5
+# learning_rate = 0.008697978603031918
+# batch_size = 112
+# epochs = 60
+# seq_length = 20
+
+
+
+# IXIC:
+# hidden_size = 58
+# num_layers = 3
+# dropout = 0.5
+# learning_rate = 0.001280171886254229
+# batch_size = 112
+# epochs = 75
+# seq_length = 20
+
+
+
+# DJA
+# hidden_size = 170
+# num_layers = 3
+# dropout = 0.05
+# learning_rate = 0.0022424611886085405
+# batch_size = 112
+# epochs = 85
+# seq_length = 20
+
+
+
 def objective(trial):
-    hidden_size = 108
-    num_layers = None  # Set your own value
-    dropout = None  # Set your own value5
-    learning_rate = 0.0019594494528614313
-    batch_size = None  # Set your own value
-    epochs = 100
-    seq_length = 50
+    # IXIC:
+    hidden_size = 58
+    num_layers = 3
+    dropout = 0.5
+    learning_rate = 0.001280171886254229
+    batch_size = 112
+    epochs = 75
+    seq_length = 20
 
     patience = 30
 
@@ -144,7 +190,7 @@ def objective(trial):
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=20)
+study.optimize(objective, n_trials=500)
 
 print("Best hyperparameters:")
 print(study.best_trial)

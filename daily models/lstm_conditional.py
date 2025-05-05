@@ -103,14 +103,13 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-# OPTUNA
-hidden_size = 35
-num_layers = 2
-dropout = 0.30000000000000004
-learning_rate = 0.006812332097152033
-batch_size = 112
-epochs = 100
-sequence_length = 55
+hidden_size = 240
+num_layers = 3
+dropout = 0.4
+learning_rate = 0.0018303062484727483
+batch_size = None  # Set your own value
+epochs = 90
+sequence_length = 15
 
 print('-' * 100)
 
@@ -124,13 +123,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=learning_rate * 10,
+    max_lr=0.01916580828828572,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.3,
+    pct_start=0.4189764437926888,
     anneal_strategy='cos',
-    div_factor=10,
-    final_div_factor=100,
+    div_factor=14,
+    final_div_factor=255,
 )
 
 for epoch in range(epochs):
@@ -182,7 +181,7 @@ with torch.no_grad():
 predictions = np.concatenate(predictions)
 actuals = np.concatenate(actuals)
 index_labels = np.array(index_labels)
-print(index_labels)
+# print(index_labels)
 print('-' * 100)
 
 # mae_loss = mean_absolute_error(actuals, predictions)

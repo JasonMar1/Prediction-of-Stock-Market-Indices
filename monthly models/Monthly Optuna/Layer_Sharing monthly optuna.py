@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 
-from data_loader_layer_sharing import layer_sharing_load_daily_data
+from data_loader_layer_sharing import layer_sharing_load_monthly_data
 import optuna
 
 
@@ -96,7 +96,7 @@ TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length eq
 TEST_END_DATE = "2025-01-01"
 
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
 def objective(trial):
@@ -106,7 +106,7 @@ def objective(trial):
     dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
-    sequence_length = trial.suggest_int("sequence_length", 10, 60, step=5)
+    sequence_length = trial.suggest_int("sequence_length", 1, 3)
     epochs = trial.suggest_int("epochs", 10, 100, step=5)
     num_heads = trial.suggest_int("num_heads", 1, 4)
 

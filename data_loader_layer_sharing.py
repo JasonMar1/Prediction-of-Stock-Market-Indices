@@ -67,6 +67,52 @@ def load_index_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
     return df
 
 
+def load_index_monthly_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
+    file_path = indices_layer_sharing[index_name]
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
+    df = df[df.index >= "1950-01-03"]
+    df = df.loc[TRAIN_START_DATE:TEST_END_DATE]
+
+    # Aggregate daily data into monthly data.
+    monthly_df = df.resample("ME").agg({
+        "Open": "first",
+        "High": "max",
+        "Low": "min",
+        "Close": "last",
+        "Adjusted_close": "last",
+        "Volume": "sum"
+    })
+
+    # Monthly Log Returns
+    monthly_df["Log_Returns"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(1))
+    monthly_df["Log_Returns_Next_Month"] = monthly_df["Log_Returns"].shift(-1)
+
+    monthly_df["Log_Returns_2"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(2))
+    monthly_df["Log_Returns_4"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(4))
+    monthly_df["Log_Returns_6"] = np.log(monthly_df["Adjusted_close"]) - np.log(monthly_df["Adjusted_close"].shift(6))
+
+    monthly_df["Volatility"] = monthly_df["Log_Returns"].rolling(window=3).std()
+    monthly_df["RSI_6"] = compute_RSI(monthly_df, period=6)
+
+    monthly_df["SMA_2"] = monthly_df["Adjusted_close"].rolling(window=2).mean()
+    monthly_df["SMA_6"] = monthly_df["Adjusted_close"].rolling(window=6).mean()
+    monthly_df["SMA_12"] = monthly_df["Adjusted_close"].rolling(window=12).mean()
+
+    monthly_df["EMA_2"] = monthly_df["Adjusted_close"].ewm(span=2, adjust=False).mean()
+    monthly_df["EMA_6"] = monthly_df["Adjusted_close"].ewm(span=6, adjust=False).mean()
+
+    monthly_df["MA_Crossover"] = monthly_df["SMA_2"] > monthly_df["SMA_6"]
+
+    monthly_df["Index"] = index_name
+    monthly_df.dropna(inplace=True)
+
+    return monthly_df
+
+
 def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
     # Load data for all selected indices
     dfs = {}
@@ -136,3 +182,70 @@ def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE
     return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test_combined, feature_columns
 
 
+def layer_sharing_load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
+    # Load data for all selected indices
+    dfs = {}
+    for index_name in selected_indices.values():
+        print(f"Loading data for {index_name}...")
+        dfs[index_name] = load_index_monthly_data(index_name, TRAIN_START_DATE, TEST_END_DATE)
+
+    # (intersection of all available dates)
+    common_dates = sorted(
+        set.intersection(*(set(df.index) for df in dfs.values()))
+    )
+    for idx in dfs:
+        dfs[idx] = dfs[idx].loc[common_dates]  # Keep only common dates
+
+
+    excluded_columns = ["Log_Returns_Next_Month", "Index"]
+    feature_columns = [col for col in dfs[next(iter(dfs))].columns if col not in excluded_columns]
+
+
+    X_train, y_train = [], []
+    X_valid, y_valid = [], []
+    X_test,  y_test  = [], []
+
+    for idx, df in dfs.items():
+        X = df[feature_columns]
+        y = df["Log_Returns_Next_Month"]
+
+        X_train.append(X.loc[TRAIN_START_DATE:TRAIN_END_DATE])
+        y_train.append(y.loc[TRAIN_START_DATE:TRAIN_END_DATE])
+
+        X_valid.append(X.loc[VALID_START_DATE:VALID_END_DATE])
+        y_valid.append(y.loc[VALID_START_DATE:VALID_END_DATE])
+
+        X_test.append(X.loc[TEST_START_DATE:TEST_END_DATE])
+        y_test.append(y.loc[TEST_START_DATE:TEST_END_DATE])
+
+    if standardized:
+        scaler = StandardScaler()
+
+        # Combine all training samples across indices
+        df_all_train = pd.concat(X_train, axis=0)
+        scaler.fit(df_all_train)
+
+        # Split back into separate DataFrames (same structure as before)
+        def transform_list(df_list):
+            all_concat = pd.concat(df_list, axis=0)
+            transformed = scaler.transform(all_concat)
+            output = []
+            start = 0
+            for df in df_list:
+                n = len(df)
+                block = transformed[start:start + n]
+                output.append(pd.DataFrame(block, index=df.index, columns=df.columns))
+                start += n
+            return output
+
+        # Apply transformation
+        X_train = transform_list(X_train)
+        X_valid = transform_list(X_valid)
+        X_test = transform_list(X_test)
+
+    for i, index_name in enumerate(dfs.keys()):
+        print(f"{index_name}: Train={len(X_train[i])}, Valid={len(X_valid[i])}, Test={len(X_test[i])}")
+
+    df_test_combined = pd.concat([df.loc[TEST_START_DATE:TEST_END_DATE].assign(Index=index) for index, df in dfs.items()], axis=0).sort_index()
+
+    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test_combined, feature_columns

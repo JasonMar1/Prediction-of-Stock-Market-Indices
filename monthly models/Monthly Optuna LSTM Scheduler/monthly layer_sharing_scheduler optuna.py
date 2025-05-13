@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 
-from data_loader_layer_sharing import layer_sharing_load_daily_data
+from data_loader_layer_sharing import layer_sharing_load_monthly_data
 import optuna
 
 
@@ -96,35 +96,54 @@ TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length eq
 TEST_END_DATE = "2025-01-01"
 
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
 def objective(trial):
-    # Define hyperparameter search space
-    hidden_size = trial.suggest_int("hidden_size", 32, 512, log=True)
-    num_layers = trial.suggest_int("num_layers", 1, 4)
-    dropout = trial.suggest_float("dropout", 0.0, 0.5, step=0.05)
-    learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
-    batch_size = trial.suggest_int("batch_size", 16, 128, step=16)
-    sequence_length = trial.suggest_int("sequence_length", 10, 60, step=5)
-    epochs = trial.suggest_int("epochs", 10, 100, step=5)
-    num_heads = trial.suggest_int("num_heads", 1, 4)
+    # Model hyperparameters
+    hidden_size = 332
+    num_layers = 2
+    dropout = None  # Set your own value
+    learning_rate = 0.001043578040821334
+    batch_size = 112
+    sequence_length = None  # Set your own value0
+    epochs = None  # Set your own value
+    num_heads = None  # Set your own value
 
+    # Scheduler hyperparameters
+    max_lr = trial.suggest_float("max_lr", learning_rate * 5, learning_rate * 20)
+    pct_start = trial.suggest_float("pct_start", 0.1, 0.5)
+    div_factor = trial.suggest_int("div_factor", 5, 25)
+    final_div_factor = trial.suggest_int("final_div_factor", 10, 500)
+
+    # Skip invalid configurations (e.g. hidden_size must be divisible by num_heads)
     if hidden_size % num_heads != 0:
         raise optuna.exceptions.TrialPruned()
 
-    # epochs = 100
-    patience = 30
 
     model = SharedLSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads).to(device)
 
-    criterion = nn.L1Loss()  # MAE loss
+    criterion = nn.L1Loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     train_loader, valid_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, sequence_length, batch_size, device)
 
+
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=max_lr,
+        steps_per_epoch=len(train_loader),
+        epochs=epochs,
+        pct_start=pct_start,
+        anneal_strategy='cos',
+        cycle_momentum=False,
+        div_factor=div_factor,
+        final_div_factor=final_div_factor
+    )
+
     best_val_loss = float("inf")
     patience_counter = 0
+    patience = 30
 
     for epoch in range(epochs):
         model.train()
@@ -140,12 +159,13 @@ def objective(trial):
 
             loss.backward()
             optimizer.step()
+            scheduler.step()
 
+        # Validation
         model.eval()
         valid_loss = []
         with torch.no_grad():
             for batch_x, batch_y in valid_loader:
-
                 batch_x, batch_y = batch_x.to(device), batch_y.to(device)
                 batch_x = batch_x.permute(1, 0, 2, 3)  # (indices, batch, seq_len, features)
                 batch_y = batch_y.permute(1, 0).unsqueeze(-1)  # (indices, batch, 1)
@@ -156,27 +176,20 @@ def objective(trial):
 
         avg_valid_loss = np.mean(valid_loss)
 
-
-        # # Optuna pruning (stops bad trials early)
-        # trial.report(avg_valid_loss, epoch)
-        # if trial.should_prune():
-        #     raise optuna.exceptions.TrialPruned()
-
-        # Early stopping
         if avg_valid_loss < best_val_loss:
             best_val_loss = avg_valid_loss
-            patience_counter = 0  # Reset patience since a better model is found
+            patience_counter = 0
         else:
             patience_counter += 1
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch} with best validation loss {best_val_loss:.6f}")
-                break  # Stop training
+                break
 
     return best_val_loss
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=2000)
+study.optimize(objective, n_trials=500)
 
 print("Best hyperparameters:")
 print(study.best_trial)

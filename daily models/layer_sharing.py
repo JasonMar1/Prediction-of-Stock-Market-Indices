@@ -98,16 +98,27 @@ TEST_END_DATE = "2025-01-01"
 
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
+# 500 trials
+# hidden_size = 494
+# num_layers = None  # Set your own value
+# dropout = 0.35
+# learning_rate = 0.00560631567046721
+# batch_size = 112
+# sequence_length = None  # Set your own value0
+# epochs = 80
+# num_heads = None  # Set your own value
 
-hidden_size = 240
-num_layers = 3
-dropout = 0.4
-learning_rate = 0.0018303062484727483
-batch_size = None  # Set your own value
-epochs = 90
-sequence_length = 15
 
-num_heads = 4
+# 2000 trials
+hidden_size = 332
+num_layers = 2
+dropout = None  # Set your own value
+learning_rate = 0.001043578040821334
+batch_size = 112
+sequence_length = None  # Set your own value0
+epochs = None  # Set your own value
+num_heads = None  # Set your own value
+
 
 print('-' * 100)
 

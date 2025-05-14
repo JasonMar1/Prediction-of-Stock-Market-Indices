@@ -92,7 +92,7 @@ num_layers = 3
 dropout = 0.05
 learning_rate = 0.0045968223394529896
 batch_size = None  # Set your own value
-epochs = 65
+epochs = 25  #CHANGED BY ME FROM 65 SO IT DOESNT OVERFIT but backtesting results dont change!!!
 sequence_length = 15
 
 
@@ -106,16 +106,18 @@ train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_va
 train_losses = []
 valid_losses = []
 
+
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=learning_rate * 10,
+    max_lr=0.03987532489698507,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.3,
+    pct_start=0.4022520509012851,
     anneal_strategy='cos',
-    div_factor=10,
-    final_div_factor=100,
+    div_factor=8,
+    final_div_factor=182,
 )
+
 
 for epoch in range(epochs):
     model.train()

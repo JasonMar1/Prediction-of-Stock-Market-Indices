@@ -114,13 +114,13 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_nam
 
 
 # NYA:
-# hidden_size = 210
-# num_layers = None  # Set your own value
-# dropout = 0.5
-# learning_rate = 0.008697978603031918
-# batch_size = 112
-# epochs = 60
-# sequence_length = None  # Set your own value0
+hidden_size = 210
+num_layers = None  # Set your own value
+dropout = 0.5
+learning_rate = 0.008697978603031918
+batch_size = 112
+epochs = 60
+sequence_length = None  # Set your own value0
 
 
 
@@ -166,14 +166,14 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features, index_nam
 
 
 
-# DJA
-hidden_size = 170
-num_layers = 3
-dropout = 0.05
-learning_rate = 0.0022424611886085405
-batch_size = 112
-epochs = 85
-sequence_length = None  # Set your own value0
+# # DJA
+# hidden_size = 170
+# num_layers = 3
+# dropout = 0.05
+# learning_rate = 0.0022424611886085405
+# batch_size = 112
+# epochs = 85
+# sequence_length = None  # Set your own value0
 
 
 # #DJA
@@ -205,14 +205,15 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.011241352634319145,
+    max_lr=0.05409940975504996,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.1456163824116438,
+    pct_start=0.4244669230789687,
     anneal_strategy='cos',
-    div_factor=6,
-    final_div_factor=35,
+    div_factor=7,
+    final_div_factor=118,
 )
+
 
 
 for epoch in range(epochs):

@@ -77,7 +77,30 @@ if __name__ == "__main__":
         log_val_interval=-1
     )
 
-    early_stop = EarlyStopping(monitor="val_loss", patience=5)
+    def custom_configure_optimizers():
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.00021483427134987102)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=0.001166115255156835,
+            steps_per_epoch=len(train_loader),
+            epochs=60,
+            pct_start=0.4159131760045641,
+            anneal_strategy='cos',
+            cycle_momentum=False,
+            div_factor=17,
+            final_div_factor=None  # Set your own value7
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step"
+            }
+        }
+
+    model.configure_optimizers = custom_configure_optimizers
+
+    early_stop = EarlyStopping(monitor="val_loss", patience=30)
     trainer = Trainer(
         max_epochs=60,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",

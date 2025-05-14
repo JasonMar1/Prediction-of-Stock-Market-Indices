@@ -99,25 +99,25 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 # 500 trials
-# hidden_size = 494
-# num_layers = None  # Set your own value
-# dropout = 0.35
-# learning_rate = 0.00560631567046721
-# batch_size = 112
-# sequence_length = None  # Set your own value0
-# epochs = 80
-# num_heads = None  # Set your own value
-
-
-# 2000 trials
-hidden_size = 332
-num_layers = 2
-dropout = None  # Set your own value
-learning_rate = 0.001043578040821334
+hidden_size = 494
+num_layers = None  # Set your own value
+dropout = 0.35
+learning_rate = 0.00560631567046721
 batch_size = 112
 sequence_length = None  # Set your own value0
-epochs = None  # Set your own value
+epochs = 40
 num_heads = None  # Set your own value
+
+
+# # 2000 trials
+# hidden_size = 332
+# num_layers = 2
+# dropout = None  # Set your own value
+# learning_rate = 0.001043578040821334
+# batch_size = 112
+# sequence_length = None  # Set your own value0
+# epochs = None  # Set your own value
+# num_heads = None  # Set your own value
 
 
 print('-' * 100)
@@ -129,6 +129,17 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
 train_losses = []
 valid_losses = []
+
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=0.006098274606304232,
+    steps_per_epoch=len(train_loader),
+    epochs=epochs,
+    pct_start=0.2749320007622838,
+    anneal_strategy='cos',
+    div_factor=6,
+    final_div_factor=None  # Set your own value5,
+)
 
 for epoch in range(epochs):
     model.train()
@@ -145,6 +156,7 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         train_loss.append(loss.item())
 

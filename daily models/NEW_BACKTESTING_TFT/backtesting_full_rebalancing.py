@@ -6,7 +6,7 @@ import pandas as pd
 portfolio_history = []
 
 
-df_predictions = pd.read_csv("../Daily Predictions/tft_predictions.csv", parse_dates=["Date"], index_col="Date")
+df_predictions = pd.read_csv("../Daily Predictions OLD/tft_predictions.csv", parse_dates=["Date"], index_col="Date")
 
 # print(df_predictions)
 

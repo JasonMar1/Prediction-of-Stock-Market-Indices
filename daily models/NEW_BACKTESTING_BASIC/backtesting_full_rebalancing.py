@@ -7,10 +7,10 @@ portfolio_history = []
 
 
 csv_files = [
-    "../Daily Predictions/predictions_basic_lstm_DJA.csv",
-    "../Daily Predictions/predictions_basic_lstm_GSPC.csv",
-    "../Daily Predictions/predictions_basic_lstm_IXIC.csv",
-    "../Daily Predictions/predictions_basic_lstm_NYA.csv"
+    "../Daily Predictions OLD/predictions_basic_lstm_DJA.csv",
+    "../Daily Predictions OLD/predictions_basic_lstm_GSPC.csv",
+    "../Daily Predictions OLD/predictions_basic_lstm_IXIC.csv",
+    "../Daily Predictions OLD/predictions_basic_lstm_NYA.csv"
 ]
 
 df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]

@@ -84,6 +84,43 @@ final_portfolio_value = calculate_portfolio_value(df_predictions.index[-1], cash
 
 print(f"\nFinal Portfolio Value: ${final_portfolio_value:.2f}")
 
+
+
+def simulate_single_index_leverage(start_cash=100000):
+    leverage_results = {}
+
+    for index_name in df_predictions["Index"].unique():
+        # Filter for only this index
+        index_df = df_predictions[df_predictions["Index"] == index_name].sort_index()
+
+        if index_df.empty:
+            continue
+
+        first_day = index_df.index[0]
+        first_price = index_df.loc[first_day]["Adjusted_Close"]
+
+        shares_bought = math.floor(start_cash / first_price)
+        leftover_cash = start_cash - (shares_bought * first_price)
+
+        portfolio_values = []
+        for date, row in index_df.iterrows():
+            current_price = row["Adjusted_Close"]
+            portfolio_value = shares_bought * current_price + leftover_cash
+            portfolio_values.append((date, portfolio_value))
+
+        # Save as DataFrame
+        leverage_results[index_name] = pd.DataFrame(portfolio_values, columns=["Date", f"{index_name}_Leverage"])
+
+    return leverage_results
+
+
+leverage_histories = simulate_single_index_leverage()
+for index_name, df in leverage_histories.items():
+    final_value = df.iloc[-1, 1]
+    print(f"Final Portfolio Value with 100% leverage on {index_name}: ${final_value:.2f}")
+
+
+
 def run_strategy():
     # Return the portfolio history as a DataFrame
     return pd.DataFrame(portfolio_history, columns=["Date", strategy])

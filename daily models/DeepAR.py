@@ -72,6 +72,30 @@ if __name__ == "__main__":
         log_val_interval=-1
     )
 
+    # Override configure_optimizers
+    def custom_configure_optimizers():
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.00026136331295947005)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=0.0014269201894000047,
+            steps_per_epoch=len(train_loader),
+            epochs=20,
+            pct_start=0.4354149725443287,
+            anneal_strategy='cos',
+            cycle_momentum=False,
+            div_factor=24,
+            final_div_factor=172
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step"
+            }
+        }
+
+    model.configure_optimizers = custom_configure_optimizers
+
     early_stop = EarlyStopping(monitor="val_loss", patience=5)
     trainer = Trainer(
         max_epochs=20,

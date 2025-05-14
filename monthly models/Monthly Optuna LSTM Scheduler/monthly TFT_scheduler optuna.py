@@ -13,14 +13,13 @@ def objective(trial):
     print("-"*50)
     print(f"\n Trial {trial.number}")
 
-    max_encoder_length =
-    learning_rate =
-    hidden_size =
-    rnn_layers =
-    dropout =
-    batch_size =
-    epochs =
-
+    max_encoder_length = 3
+    learning_rate = 0.00023354614422779345
+    hidden_size = 200
+    attention_head_size = 4
+    dropout = 0.4
+    batch_size = None  # Set your own value
+    epochs = 45
 
     # Scheduler-specific hyperparameters to be tuned
     max_lr = trial.suggest_float("max_lr", learning_rate * 5, learning_rate * 20)
@@ -130,10 +129,10 @@ if __name__ == "__main__":
         TEST_START_DATE, TEST_END_DATE
     )
 
-    prediction_length = 1  # 1-day ahead
+    prediction_length = 1  # 1-month ahead
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=500, callbacks=[log_best_trial])
+    study.optimize(objective, n_trials=100, callbacks=[log_best_trial])
 
     print("Best hyperparameters:")
     print(study.best_trial)

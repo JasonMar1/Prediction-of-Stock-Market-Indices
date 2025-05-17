@@ -96,7 +96,7 @@ VALID_END_DATE = "2022-08-31"
 TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
 TEST_END_DATE = "2025-01-01"
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, df_test, features = layer_sharing_load_monthly_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
 hidden_size = 34
@@ -201,8 +201,7 @@ with torch.no_grad():
                 flat_targets.append(actuals[i][j])
                 flat_indices.append(idx)
 
-# Drop first `sequence_length` rows per index from df_test to match
-# Now drop the first `sequence_length` rows per index in df_test
+# drop the first 'sequence_length' rows per index in df_test
 mask = df_test.groupby("Index").cumcount() >= sequence_length
 df_test_filtered = df_test[mask]
 

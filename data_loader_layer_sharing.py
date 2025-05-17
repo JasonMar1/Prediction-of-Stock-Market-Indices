@@ -14,6 +14,10 @@ selected_indices = {
     "E": "NYA",  # NYSE Composite
 }
 
+
+index_mapping = {"DJA": 0, "GSPC": 1, "IXIC": 2, "NYA": 3} # For the torch.nn.Embedding
+
+
 indices_layer_sharing = {v: os.path.join(BASE_DIR, "index_data", f"{v}.INDX.csv") for v in selected_indices.values()}
 
 
@@ -114,7 +118,6 @@ def load_index_monthly_data(index_name, TRAIN_START_DATE, TEST_END_DATE):
 
 
 def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    # Load data for all selected indices
     dfs = {}
     for index_name in selected_indices.values():
         print(f"Loading data for {index_name}...")
@@ -132,9 +135,9 @@ def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE
     feature_columns = [col for col in dfs[next(iter(dfs))].columns if col not in excluded_columns]
 
 
-    X_train, y_train = [], []
-    X_valid, y_valid = [], []
-    X_test,  y_test  = [], []
+    X_train, y_train, index_train = [], [], []
+    X_valid, y_valid, index_valid = [], [], []
+    X_test, y_test, index_test = [], [], []
 
     for idx, df in dfs.items():
         X = df[feature_columns]
@@ -142,12 +145,20 @@ def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE
 
         X_train.append(X.loc[TRAIN_START_DATE:TRAIN_END_DATE])
         y_train.append(y.loc[TRAIN_START_DATE:TRAIN_END_DATE])
+        index_train.append(index_mapping[idx]) # list with the index mapping for each sample of the set
 
         X_valid.append(X.loc[VALID_START_DATE:VALID_END_DATE])
         y_valid.append(y.loc[VALID_START_DATE:VALID_END_DATE])
+        index_valid.append(index_mapping[idx]) # list with the index mapping for each sample of the set
 
         X_test.append(X.loc[TEST_START_DATE:TEST_END_DATE])
         y_test.append(y.loc[TEST_START_DATE:TEST_END_DATE])
+        index_test.append(index_mapping[idx]) # list with the index mapping for each sample of the set
+
+    # print(index_train)
+    # index_train = [item for sublist in index_train for item in sublist]
+    # index_valid = [item for sublist in index_valid for item in sublist]
+    # index_test = [item for sublist in index_test for item in sublist]
 
     if standardized:
         scaler = StandardScaler()
@@ -169,7 +180,6 @@ def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE
                 start += n
             return output
 
-        # Apply transformation
         X_train = transform_list(X_train)
         X_valid = transform_list(X_valid)
         X_test = transform_list(X_test)
@@ -179,11 +189,10 @@ def layer_sharing_load_daily_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE
 
     df_test_combined = pd.concat([df.loc[TEST_START_DATE:TEST_END_DATE].assign(Index=index) for index, df in dfs.items()], axis=0).sort_index()
 
-    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test_combined, feature_columns
+    return X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, df_test_combined, feature_columns
 
 
 def layer_sharing_load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE):
-    # Load data for all selected indices
     dfs = {}
     for index_name in selected_indices.values():
         print(f"Loading data for {index_name}...")
@@ -201,9 +210,9 @@ def layer_sharing_load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DA
     feature_columns = [col for col in dfs[next(iter(dfs))].columns if col not in excluded_columns]
 
 
-    X_train, y_train = [], []
-    X_valid, y_valid = [], []
-    X_test,  y_test  = [], []
+    X_train, y_train, index_train = [], [], []
+    X_valid, y_valid, index_valid = [], [], []
+    X_test, y_test, index_test = [], [], []
 
     for idx, df in dfs.items():
         X = df[feature_columns]
@@ -211,12 +220,16 @@ def layer_sharing_load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DA
 
         X_train.append(X.loc[TRAIN_START_DATE:TRAIN_END_DATE])
         y_train.append(y.loc[TRAIN_START_DATE:TRAIN_END_DATE])
+        index_train.extend([index_mapping[idx]] * len(X_train)) # list with the index mapping for each sample of the set
 
         X_valid.append(X.loc[VALID_START_DATE:VALID_END_DATE])
         y_valid.append(y.loc[VALID_START_DATE:VALID_END_DATE])
+        index_valid.extend([index_mapping[idx]] * len(X_valid)) # list with the index mapping for each sample of the set
 
         X_test.append(X.loc[TEST_START_DATE:TEST_END_DATE])
         y_test.append(y.loc[TEST_START_DATE:TEST_END_DATE])
+        index_test.extend([index_mapping[idx]] * len(X_test)) # list with the index mapping for each sample of the set
+
 
     if standardized:
         scaler = StandardScaler()
@@ -238,7 +251,6 @@ def layer_sharing_load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DA
                 start += n
             return output
 
-        # Apply transformation
         X_train = transform_list(X_train)
         X_valid = transform_list(X_valid)
         X_test = transform_list(X_test)
@@ -248,4 +260,4 @@ def layer_sharing_load_monthly_data(standardized, TRAIN_START_DATE, TRAIN_END_DA
 
     df_test_combined = pd.concat([df.loc[TEST_START_DATE:TEST_END_DATE].assign(Index=index) for index, df in dfs.items()], axis=0).sort_index()
 
-    return X_train, y_train, X_valid, y_valid, X_test, y_test, df_test_combined, feature_columns
+    return X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, df_test_combined, feature_columns

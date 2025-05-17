@@ -10,7 +10,7 @@ from data_loader_layer_sharing import layer_sharing_load_daily_data
 
 
 class SharedLSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, dropout, output_size, num_heads):
+    def __init__(self, input_size, hidden_size, num_layers, dropout, output_size, num_heads, num_indices, embedding_dim):
         super(SharedLSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -18,19 +18,48 @@ class SharedLSTM(nn.Module):
         # Shared LSTM (applied independently per index)
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
 
+        self.h_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
+        self.c_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
+
+        # map embedding dimension to LSTM hidden_size
+        self.h_state_proj = nn.Linear(embedding_dim, hidden_size)
+        self.c_state_proj = nn.Linear(embedding_dim, hidden_size)
+
         # Multihead self-attention across indices
         self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, batch_first=False)
 
         self.fc = nn.Linear(hidden_size, output_size)
 
-    def forward(self, x):
-        # x: (indices, batch_size, sequence_length, input_size)
+    def forward(self, x, index_tensor):
+        # x: (indices, batch_size, sequence_length, features)
         indices, batch_size, sequence_length, input_size = x.shape
-
         outputs = []
+
+
         for i in range(indices):
-            xi = x[i]  # (batch_size, sequence_length, input_size)
-            out, _ = self.lstm(xi)  # (batch_size, sequence_length, hidden_size)
+            xi = x[i]  # (batch_size, sequence_length, features)
+            # index_ids = index_tensor[:, i]  # (batch,)
+
+            index_ids = torch.full((batch_size,), i, dtype=torch.long, device=x.device)
+
+            # print(index_ids)
+            # print('done')
+
+            h_embedding = self.h_state(index_ids)
+            c_embedding = self.c_state(index_ids)
+
+            h_proj = self.h_state_proj(h_embedding)  # (batch_size, hidden_size)
+            c_proj = self.c_state_proj(c_embedding)  # (batch_size, hidden_size)
+
+            h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
+            c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
+
+            # print(f'i: {i}')
+            # print(f'h_state: {h_state}')
+            # print(f'c_state: {c_state}')
+            # print('done')
+
+            out, _ = self.lstm(xi, (h_state, c_state))  # (batch_size, sequence_length, hidden_size)
             out = out[:, -1, :]  # last layer's hidden state: (batch_size, hidden_size)
             outputs.append(out)
 
@@ -46,43 +75,107 @@ class SharedLSTM(nn.Module):
         return x_out.permute(1, 0, 2)  # (indices, batch_size, 1)
 
 
+# def create_sequences(X_list, y_list, index_labels_list, seq_length, device):
+#     all_X, all_y, all_index = [], [], []
+#     # print(index_labels_list)
+#     for X_df, y_df, idxs in zip(X_list, y_list, index_labels_list):
+#
+#         X_vals, y_vals = X_df.values, y_df.values  # numpy arrays to speed up slicing
+#         xs, ys, indices = [], [], []
+#
+#         for i in range(len(X_vals) - seq_length):
+#             xs.append(X_vals[i:i + seq_length])
+#             ys.append(y_vals[i + seq_length])
+#             indices.append(idxs)
+#
+#         xs_np = np.array(xs, dtype=np.float32)
+#         ys_np = np.array(ys, dtype=np.float32)
+#
+#
+#         xs_tensor = torch.tensor(xs_np, dtype=torch.float32).to(device)
+#         ys_tensor = torch.tensor(ys_np, dtype=torch.float32).to(device)
+#         idx_tensor = torch.tensor(indices, dtype=torch.long).to(device)
+#
+#         all_X.append(xs_tensor)
+#         all_y.append(ys_tensor)
+#         all_index.append(idx_tensor)
+#
+#     return torch.stack(all_X), torch.stack(all_y), torch.stack(all_index)  # (indices, batch_size, seq_len, features), (indices, batch_size), (indices, batch_size)
+
+
 def create_sequences(X_list, y_list, seq_length, device):
-    all_X, all_y = [], []
-    for X_df, y_df in zip(X_list, y_list):
+    """
+    X_list, y_list: λίστες από pandas DataFrames, μια ανά index
+    Επιστρέφει:
+      X_seq:   (num_indices, num_samples, seq_length, features)
+      y_seq:   (num_indices, num_samples)
+      idx_seq: (num_indices, num_samples) με τιμές 0,1,2,3 ανά index
+    """
+    all_X, all_y, all_idx = [], [], []
 
-        X_vals, y_vals = X_df.values, y_df.values  # numpy arrays to speed up slicing
-        xs, ys = [], []
-        for i in range(len(X_vals) - seq_length):
-            xs.append(X_vals[i:i + seq_length])
-            ys.append(y_vals[i + seq_length])
+    for idx, (X_df, y_df) in enumerate(zip(X_list, y_list)):
+        X_vals, y_vals = X_df.values, y_df.values
+        xs, ys, ids = [], [], []
 
-        xs_np = np.array(xs, dtype=np.float32)
-        ys_np = np.array(ys, dtype=np.float32)
+        for t in range(len(X_vals) - seq_length):
+            xs.append(X_vals[t:t + seq_length])
+            ys.append(y_vals[t + seq_length])
+            ids.append(idx)   # 0 για το πρώτο, 1 για το δεύτερο, κ.ο.κ.
 
-        xs_tensor = torch.tensor(xs_np, dtype=torch.float32).to(device)
-        ys_tensor = torch.tensor(ys_np, dtype=torch.float32).to(device)
+        # σε tensors
+        xs = torch.tensor(np.array(xs, dtype=np.float32),
+                          dtype=torch.float32, device=device)
+        ys = torch.tensor(np.array(ys, dtype=np.float32),
+                          dtype=torch.float32, device=device)
+        ids = torch.tensor(np.array(ids, dtype=np.int64),
+                           dtype=torch.long, device=device)
 
-        all_X.append(xs_tensor)
-        all_y.append(ys_tensor)
+        all_X.append(xs)
+        all_y.append(ys)
+        all_idx.append(ids)
 
-    return torch.stack(all_X), torch.stack(all_y)  # (indices, samples, seq_len, features), (indices, samples)
+    return (
+        torch.stack(all_X, dim=0),
+        torch.stack(all_y, dim=0),
+        torch.stack(all_idx, dim=0),
+    )
 
 
-def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device):
-    def prepare(X, y, shuffle):
-        X_seq, y_seq = create_sequences(X, y, sequence_length, device)
-        # Flatten index dimension into batch
-        X_flat = X_seq.permute(1, 0, 2, 3)  # (samples, indices, seq_len, features)
+# def get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, sequence_length, batch_size, device):
+#     def prepare(X, y, idx, shuffle):
+#         X_seq, y_seq, idx_seq = create_sequences(X, y, idx, sequence_length, device)
+#
+#         # Flatten index dimension into batch
+#         X_flat = X_seq.permute(1, 0, 2, 3)  # (batch_size, indices, seq_len, features)
+#         y_flat = y_seq.permute(1, 0)        # (batch_size, indices)
+#         idx_flat = idx_seq.permute(1, 0)    # (batch_size, indices)
+#         # print(idx_flat.shape)
+#
+#         dataset = TensorDataset(X_flat, y_flat, idx_flat)
+#         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+#
+#     return (
+#         prepare(X_train, y_train, index_train, shuffle=True),
+#         prepare(X_valid, y_valid, index_valid, shuffle=False),
+#         prepare(X_test, y_test, index_test, shuffle=False)
+#     )
+def get_dataloaders(X_train, y_train, X_valid, y_valid,
+                    X_test, y_test, seq_length, batch_size, device):
+    def prepare(X_list, y_list, shuffle):
+        X_seq, y_seq, idx_seq = create_sequences(X_list, y_list,
+                                                 seq_length, device)
+        # flatten samples ↔ indices
+        X_flat = X_seq.permute(1, 0, 2, 3)  # (samples, indices, seq_len, feat)
         y_flat = y_seq.permute(1, 0)        # (samples, indices)
-        dataset = TensorDataset(X_flat, y_flat)
-        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        idx_flat = idx_seq.permute(1, 0)    # (samples, indices)
+        ds = TensorDataset(X_flat, y_flat, idx_flat)
+        return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
 
     return (
         prepare(X_train, y_train, shuffle=True),
         prepare(X_valid, y_valid, shuffle=False),
-        prepare(X_test, y_test, shuffle=False)
+        prepare(X_test,  y_test,  shuffle=False),
     )
-
 
 torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,14 +189,25 @@ VALID_END_DATE = "2022-08-31"
 TEST_START_DATE = "2022-10-01"  # worst case scenario, having sequence length equal to 3 months + dropping 1 month for data-leakage
 TEST_END_DATE = "2025-01-01"
 
-X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
+X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
-# 500 trials
-hidden_size = 494
-num_layers = None  # Set your own value
-dropout = 0.35
-learning_rate = 0.00560631567046721
-batch_size = 112
+
+# # 500 trials
+# hidden_size = 494
+# num_layers = None  # Set your own value
+# dropout = 0.35
+# learning_rate = 0.00560631567046721
+# batch_size = 112
+# sequence_length = None  # Set your own value0
+# epochs = 40
+# num_heads = None  # Set your own value
+
+
+hidden_size = 200
+num_layers = 2
+dropout = None  # Set your own value
+learning_rate = 0.001
+batch_size = 100
 sequence_length = None  # Set your own value0
 epochs = 40
 num_heads = None  # Set your own value
@@ -116,17 +220,26 @@ num_heads = None  # Set your own value
 # learning_rate = 0.001043578040821334
 # batch_size = 112
 # sequence_length = None  # Set your own value0
-# epochs = None  # Set your own value
+# epochs = 5
 # num_heads = None  # Set your own value
 
 
 print('-' * 100)
 
-model = SharedLSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads).to(device)
+model = SharedLSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads, num_indices=4, embedding_dim=None  # Set your own value).to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
+# train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, sequence_length, batch_size, device)
+
+
+train_loader, valid_loader, test_loader = get_dataloaders(
+    X_train, y_train,
+    X_valid, y_valid,
+    X_test,  y_test,
+    sequence_length, batch_size, device
+)
+
 train_losses = []
 valid_losses = []
 
@@ -144,14 +257,16 @@ scheduler = optim.lr_scheduler.OneCycleLR(
 for epoch in range(epochs):
     model.train()
     train_loss = []
-    for batch_x, batch_y in train_loader:
+    for batch_x, batch_y, batch_index in train_loader:
         optimizer.zero_grad()
 
-        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+        batch_x, batch_y, batch_index = batch_x.to(device), batch_y.to(device), batch_index.to(device)
         batch_x = batch_x.permute(1, 0, 2, 3)  # (indices, batch, seq_len, features)
         batch_y = batch_y.permute(1, 0).unsqueeze(-1)  # (indices, batch, 1)
 
-        outputs = model(batch_x)
+        # print("batch_index:")
+        # print(batch_index)
+        outputs = model(batch_x, batch_index)
         loss = criterion(outputs.reshape(-1), batch_y.reshape(-1))
 
         loss.backward()
@@ -167,13 +282,13 @@ for epoch in range(epochs):
     model.eval()
     valid_loss = []
     with torch.no_grad():
-        for batch_x, batch_y in valid_loader:
+        for batch_x, batch_y, batch_index in valid_loader:
 
-            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+            batch_x, batch_y, batch_index = batch_x.to(device), batch_y.to(device), batch_index.to(device)
             batch_x = batch_x.permute(1, 0, 2, 3)  # (indices, batch, seq_len, features)
             batch_y = batch_y.permute(1, 0).unsqueeze(-1)  # (indices, batch, 1)
 
-            outputs = model(batch_x)
+            outputs = model(batch_x, batch_index)
             loss = criterion(outputs.reshape(-1), batch_y.reshape(-1))
             valid_loss.append(loss.item())
 
@@ -191,13 +306,13 @@ flat_preds, flat_targets, flat_indices = [], [], []
 
 
 with torch.no_grad():
-    for batch_x, batch_y in test_loader:
+    for batch_x, batch_y, batch_index in test_loader:
 
-        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+        batch_x, batch_y, batch_index = batch_x.to(device), batch_y.to(device), batch_index.to(device)
         batch_x = batch_x.permute(1, 0, 2, 3)  # (indices, batch, seq_len, features)
         batch_y = batch_y.permute(1, 0).unsqueeze(-1)  # (indices, batch, 1)
 
-        outputs = model(batch_x)
+        outputs = model(batch_x, batch_index)
         predictions = outputs.squeeze().cpu().numpy()  # shape: (indices, batch)
         actuals = batch_y.squeeze().cpu().numpy()  # shape: (indices, batch)
 
@@ -212,8 +327,7 @@ with torch.no_grad():
                 flat_targets.append(actuals[i][j])
                 flat_indices.append(idx)
 
-# Drop first `sequence_length` rows per index from df_test to match
-# Now drop the first `sequence_length` rows per index in df_test
+# drop the first 'sequence_length' rows per index in df_test
 mask = df_test.groupby("Index").cumcount() >= sequence_length
 df_test_filtered = df_test[mask]
 

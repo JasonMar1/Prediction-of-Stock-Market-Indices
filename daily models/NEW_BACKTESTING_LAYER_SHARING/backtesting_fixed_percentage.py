@@ -22,7 +22,7 @@ def calculate_portfolio_value(current_date, cash, position): # without selling a
         close_price_row = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
         # print(close_price_row)
         if not close_price_row.empty:
-            close_price = close_price_row["Adjusted_Close"].values[0]  # convert the pd series to np array
+            close_price = close_price_row["Adjusted_close"].values[0]  # convert the pd series to np array
             total_value += shares * close_price
     return total_value
 
@@ -42,7 +42,7 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
             close_price_row_sell = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
 
             if not close_price_row_sell.empty:
-                close_price_sell = close_price_row_sell["Adjusted_Close"].values[0]
+                close_price_sell = close_price_row_sell["Adjusted_close"].values[0]
 
                 if close_price_sell > 0 and position[index] > 0:
                         cash += close_price_sell * position[index]
@@ -57,7 +57,7 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
             close_price_row_buy = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
 
             if not close_price_row_buy.empty:
-                close_price_buy = close_price_row_buy["Adjusted_Close"].values[0]
+                close_price_buy = close_price_row_buy["Adjusted_close"].values[0]
 
                 if close_price_buy > 0 and allocation_per_index > 0:
                     shares_to_buy = math.floor(allocation_per_index / close_price_buy)

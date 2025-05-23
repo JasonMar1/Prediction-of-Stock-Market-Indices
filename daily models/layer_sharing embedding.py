@@ -9,25 +9,22 @@ from torch.utils.data import TensorDataset, DataLoader
 from data_loader_layer_sharing import layer_sharing_load_daily_data
 
 
-class SharedLSTM(nn.Module):
+class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, dropout, output_size, num_heads, num_indices, embedding_dim):
-        super(SharedLSTM, self).__init__()
+        super(LSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        # Shared LSTM (applied independently per index)
-        self.lstm = nn.LSTM(input_size + embedding_dim, hidden_size, num_layers, batch_first=True, dropout=dropout)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
 
-        # self.h_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
-        # self.c_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
+        self.h_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
+        self.c_state = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
 
-        # # map embedding dimension to LSTM hidden_size
-        # self.h_state_proj = nn.Linear(embedding_dim, hidden_size)
-        # self.c_state_proj = nn.Linear(embedding_dim, hidden_size)
+        # map embedding dimension to LSTM hidden_size
+        self.h_state_proj = nn.Linear(embedding_dim, hidden_size)
+        self.c_state_proj = nn.Linear(embedding_dim, hidden_size)
 
-        self.embedding = nn.Embedding(num_embeddings=num_indices, embedding_dim=embedding_dim)
 
-        # Multihead self-attention across indices
         self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, batch_first=False)
 
         self.fc = nn.Linear(hidden_size, output_size)
@@ -42,34 +39,25 @@ class SharedLSTM(nn.Module):
             xi = x[i]  # (batch_size, sequence_length, features)
             index_ids = index_tensor[:, i]  # (batch,)
 
-            emb = self.embedding(index_ids)  # (batch, embedding_dim)
-            emb_seq = emb.unsqueeze(1).expand(-1, sequence_length, -1)  # (batch, sequence_length, embedding_dim)
+            h_embedding = self.h_state(index_ids)
+            c_embedding = self.c_state(index_ids)
 
-            # h_embedding = self.h_state(index_ids)
-            # c_embedding = self.c_state(index_ids)
-            #
-            # h_proj = self.h_state_proj(h_embedding)  # (batch_size, hidden_size)
-            # c_proj = self.c_state_proj(c_embedding)  # (batch_size, hidden_size)
-            #
-            # h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
-            # c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
+            h_proj = self.h_state_proj(h_embedding)  # (batch_size, hidden_size)
+            c_proj = self.c_state_proj(c_embedding)  # (batch_size, hidden_size)
 
+            h_state = h_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
+            c_state = c_proj.unsqueeze(0).repeat(self.num_layers, 1, 1)
 
-            # out, _ = self.lstm(xi, (h_state, c_state))  # (batch_size, sequence_length, hidden_size)
-
-            xi_cat = torch.cat([xi, emb_seq], dim=-1)  # (batch, seq_len, features + embedding_dim)
-            out, _ = self.lstm(xi_cat)  # (batch, seq_len, hidden)
+            out, _ = self.lstm(xi, (h_state, c_state))  # (batch_size, sequence_length, hidden_size)
 
             out = out[:, -1, :]  # last layer's hidden state: (batch_size, hidden_size)
             outputs.append(out)
 
         out_total = torch.stack(outputs, dim=0)  # (indices, batch_size, hidden_size)
 
-        # # Self-attention expects (indices, batch_size, hidden_size)
-        # attn_output, _ = self.attention(out_total, out_total, out_total)
+        attn_output, _ = self.attention(out_total, out_total, out_total)
 
-        # Final dense layer for each index
-        x_out = out_total.permute(1, 0, 2)  # (batch_size, indices, hidden_size)
+        x_out = attn_output.permute(1, 0, 2)  # (batch_size, indices, hidden_size)
         x_out = self.fc(x_out)  # (batch_size, indices, 1)
 
         return x_out.permute(1, 0, 2)  # (indices, batch_size, 1)
@@ -77,13 +65,8 @@ class SharedLSTM(nn.Module):
 
 
 def create_sequences(X_list, y_list, seq_length, device):
-    """
-    X_list, y_list: λίστες από DataFrames, μια ανά index
-    Επιστρέφει:
-      X_seq:   (num_indices, num_samples, seq_length, features)
-      y_seq:   (num_indices, num_samples)
-      idx_seq: (num_indices, num_samples) με τιμές 0,1,2,3
-    """
+    # X_list, y_list: 1 DataFrame ανά index
+
     all_X, all_y, all_idx = [], [], []
 
     for idx, (X_df, y_df) in enumerate(zip(X_list, y_list)):
@@ -93,7 +76,7 @@ def create_sequences(X_list, y_list, seq_length, device):
         for i in range(len(X_vals) - seq_length):
             xs.append(X_vals[i:i + seq_length])
             ys.append(y_vals[i + seq_length])
-            ids.append(idx)   # 0 για το πρώτο, 1 για το δεύτερο, κ.ο.κ.
+            ids.append(idx)
 
         xs = torch.tensor(np.array(xs, dtype=np.float32),device=device)
         ys = torch.tensor(np.array(ys, dtype=np.float32), device=device)
@@ -108,7 +91,7 @@ def create_sequences(X_list, y_list, seq_length, device):
 
 def get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, seq_length, batch_size, device):
     def prepare(X_list, y_list, shuffle):
-        X_seq, y_seq, idx_seq = create_sequences(X_list, y_list, seq_length, device)
+        X_seq, y_seq, idx_seq = create_sequences(X_list, y_list, seq_length, device)  # (indices, batch_size, seq_length, features), (indices, batch_size), (indices, batch_size)
 
         X_flat = X_seq.permute(1, 0, 2, 3)  # (batch_size, indices, seq_len, features)
         y_flat = y_seq.permute(1, 0)        # (batch_size, indices)
@@ -135,53 +118,23 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-# # 500 trials
-# hidden_size = 494
-# num_layers = None  # Set your own value
-# dropout = 0.35
-# learning_rate = 0.00560631567046721
-# batch_size = 112
-# sequence_length = None  # Set your own value0
-# epochs = 40
-# num_heads = None  # Set your own value
-
-
-hidden_size = 200
+hidden_size = 332
 num_layers = 2
 dropout = None  # Set your own value
-learning_rate = 0.001
-batch_size = 100
+learning_rate = 0.001043578040821334
+batch_size = 112
 sequence_length = None  # Set your own value0
-epochs = 4
+epochs = 5
 num_heads = None  # Set your own value
-
-
-# # 2000 trials
-# hidden_size = 332
-# num_layers = 2
-# dropout = None  # Set your own value
-# learning_rate = 0.001043578040821334
-# batch_size = 112
-# sequence_length = None  # Set your own value0
-# epochs = 5
-# num_heads = None  # Set your own value
 
 
 print('-' * 100)
 
-model = SharedLSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads, num_indices=4, embedding_dim=None  # Set your own value).to(device)
+model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads, num_indices=4, embedding_dim=None  # Set your own value).to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-# train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, sequence_length, batch_size, device)
-
-
-train_loader, valid_loader, test_loader = get_dataloaders(
-    X_train, y_train,
-    X_valid, y_valid,
-    X_test,  y_test,
-    sequence_length, batch_size, device
-)
+train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)
 
 train_losses = []
 valid_losses = []
@@ -207,8 +160,6 @@ for epoch in range(epochs):
         batch_x = batch_x.permute(1, 0, 2, 3)  # (indices, batch, seq_len, features)
         batch_y = batch_y.permute(1, 0).unsqueeze(-1)  # (indices, batch, 1)
 
-        # print("batch_index:")
-        # print(batch_index)
         outputs = model(batch_x, batch_index)
         loss = criterion(outputs.reshape(-1), batch_y.reshape(-1))
 
@@ -276,9 +227,9 @@ df_test_filtered = df_test[mask]
 
 
 
-print(df_test)
-print(50*'--')
-print(df_test_filtered)
+# print(df_test)
+# print(50*'--')
+# print(df_test_filtered)
 
 
 results = pd.DataFrame({
@@ -291,12 +242,11 @@ results = pd.DataFrame({
 # Reset df_test_filtered to make Date a column
 df_test_reset = df_test_filtered.reset_index()
 
-# Merge on both Date and Index to bring in Adjusted_Close
+# Merge on Date & Index to bring in Adjusted_close
 merged = pd.merge(results, df_test_reset[["Date", "Index", "Adjusted_close"]], on=["Date", "Index"], how="left")
 
 # Rename and set index
 merged.set_index("Date", inplace=True)
-
 
 
 # mae, rmse only for the specific date range

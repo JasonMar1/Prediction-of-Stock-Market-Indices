@@ -5,10 +5,14 @@ import pandas as pd
 
 portfolio_history = []
 
-cash_fraction = 0.75
+cash_fraction = 0.5
+
 
 csv_files = [
-    "../Daily Predictions/predictions_basic_lstm_DJA.csv"
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_random_forest_DJA.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_random_forest_GSPC.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_random_forest_IXIC.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_random_forest_NYA.csv"
 ]
 
 df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]
@@ -39,21 +43,20 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
 
     selected_indices = index_scores[index_scores > 0].index.tolist()
 
-    # Sell 50% of the positions of the non-selected indices
+    # Sell the non selected_indices
     for index in position.keys():
         if index not in selected_indices:
             close_price_row_sell = df_predictions.loc[(df_predictions.index == current_date) & (df_predictions["Index"] == index)]
 
             if not close_price_row_sell.empty:
                 close_price_sell = close_price_row_sell["Adjusted_Close"].values[0]
-                if close_price_sell > 0 and position[index] > 0:
-                    half_shares = math.floor(position[index] / 2)
-                    cash += close_price_sell * half_shares
-                    position[index] -= half_shares
 
+                if close_price_sell > 0 and position[index] > 0:
+                        cash += close_price_sell * position[index]
+                        position[index] = 0
 
     if selected_indices:
-        if strategy_type == "hybrid":
+        if strategy_type == "fixed_percentage":
             allocation_per_index = (cash * cash_fraction) / len(selected_indices) if cash > 0 else 0
 
 
@@ -68,11 +71,12 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
                     position[index] +=  shares_to_buy  # Buy shares
                     cash -= shares_to_buy * close_price_buy
 
+
     # print(f"{current_date}: Rebalanced Portfolio | Selected Indices: {selected_indices} | Cash: {cash} | Positions: {position}")
     return cash, position
 
 
-strategy = "hybrid"
+strategy = "fixed_percentage"
 
 print(f"\n{'-'*20} Running Strategy: {strategy.upper()} {'-'*20}")
 cash = 100000

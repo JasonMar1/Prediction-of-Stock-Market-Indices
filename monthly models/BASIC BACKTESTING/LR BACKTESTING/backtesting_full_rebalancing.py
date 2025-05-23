@@ -7,14 +7,17 @@ portfolio_history = []
 
 
 csv_files = [
-    "../Daily Predictions/predictions_basic_lstm_DJA.csv"
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_linear_regression_DJA.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_linear_regression_GSPC.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_linear_regression_IXIC.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_linear_regression_NYA.csv"
 ]
 
 df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]
 df_predictions = pd.concat(df_list).sort_values(by="Date")
 df_predictions.set_index("Date", inplace=True)
 
-print(df_predictions)
+# print(df_predictions)
 
 
 def calculate_portfolio_value(current_date, cash, position): # without selling any positions

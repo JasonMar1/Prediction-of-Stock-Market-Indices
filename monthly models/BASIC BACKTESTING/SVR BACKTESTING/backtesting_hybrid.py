@@ -8,7 +8,10 @@ portfolio_history = []
 cash_fraction = 0.75
 
 csv_files = [
-    "../Daily Predictions OLD/predictions_basic_lstm_NYA.csv"
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_svr_DJA.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_svr_GSPC.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_svr_IXIC.csv",
+    "../../BASIC ML MONTHLY PREDICTIONS BEST/predictions_svr_NYA.csv"
 ]
 
 df_list = [pd.read_csv(file, parse_dates=["Date"]) for file in csv_files]

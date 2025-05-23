@@ -130,7 +130,11 @@ if __name__ == "__main__":
     # print(predictions[0, 0, :])
     # print(predictions[0, 0, 4])  # 0.5 quantile
 
-    median = predictions[:, 0, 4].cpu().numpy()
+    median = predictions[:, 0, 4].cpu().numpy()  # 0.5 quantile
+    # print(f'printing predictions')
+    # print(predictions)
+    # mean = predictions[:, 0, :].mean(dim=-1).cpu().numpy()  # μέσος όρος όλων των quantile προβλέψεων
+
     index_ids = x["groups"].squeeze(-1).cpu().numpy()  # [N]
     time_idxs = x["decoder_time_idx"][:, 0].cpu().numpy()  # [N]
 

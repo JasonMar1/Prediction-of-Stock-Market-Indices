@@ -92,7 +92,7 @@ num_layers = 3
 dropout = 0.05
 learning_rate = 0.0045968223394529896
 batch_size = None  # Set your own value
-epochs = 25  #CHANGED BY ME FROM 65 SO IT DOESNT OVERFIT but backtesting results dont change!!!
+epochs = 65  #CHANGED BY ME to 25 FROM 65 SO IT DOESNT OVERFIT but backtesting results dont change!!!
 sequence_length = 15
 
 

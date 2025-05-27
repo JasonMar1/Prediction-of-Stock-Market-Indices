@@ -24,6 +24,7 @@ def calculate_portfolio_value(current_date, cash, position): # without selling a
 
 
 def rebalance_portfolio(current_date, strategy_type, cash, position):
+    transaction_fee = 0.001  # 10 basis points = 0.1%
 
     next_day = df_predictions.index[df_predictions.index > current_date].min()
 
@@ -42,10 +43,10 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
                 close_price_sell = close_price_row_sell["Adjusted_Close"].values[0]
 
                 if close_price_sell > 0 and position[index] > 0:
-                        cash += close_price_sell * position[index]
-                        if strategy_type == "full_rebalancing":
-                            position[index] = 0
-
+                        sale_amount = close_price_sell * position[index]
+                        fee = sale_amount * transaction_fee
+                        cash += sale_amount - fee
+                        position[index] = 0
 
     if selected_indices:
         if strategy_type == "full_rebalancing":
@@ -59,9 +60,16 @@ def rebalance_portfolio(current_date, strategy_type, cash, position):
                 close_price_buy = close_price_row_buy["Adjusted_Close"].values[0]
 
                 if close_price_buy > 0 and allocation_per_index > 0:
-                    shares_to_buy = math.floor(allocation_per_index / close_price_buy)
-                    position[index] =  shares_to_buy  # Buy shares
-                    cash -= shares_to_buy * close_price_buy
+                    adjusted_allocation = allocation_per_index / (1 + transaction_fee)
+
+                    shares_to_buy = math.floor(adjusted_allocation / close_price_buy)
+                    total_cost = shares_to_buy * close_price_buy
+                    fee = total_cost * transaction_fee
+                    total_spent = total_cost + fee
+                    if total_spent <= cash:
+                        position[index] =  shares_to_buy  # Buy shares
+                        cash -= total_spent
+
 
 
     # print(f"{current_date}: Rebalanced Portfolio | Selected Indices: {selected_indices} | Cash: {cash} | Positions: {position}")

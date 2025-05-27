@@ -55,18 +55,18 @@ if __name__ == "__main__":
         stop_randomization=True
     )
 
-    batch_size = None  # Set your own value
+    batch_size = 112
     train_loader = train_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=8, persistent_workers=True)
     val_loader = val_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=8, persistent_workers=True)
     test_loader = test_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=8, persistent_workers=True)
 
     model = DeepAR.from_dataset(
         train_dataset,
-        learning_rate=0.00026136331295947005,
+        learning_rate=0.0002185089474245037,
         optimizer="adam",
-        dropout=0.35,
-        hidden_size=36,
-        rnn_layers=3,
+        dropout=0.15,
+        hidden_size=87,
+        rnn_layers=2,
         loss=NormalDistributionLoss(),
         log_interval=-1,
         log_val_interval=-1
@@ -74,12 +74,12 @@ if __name__ == "__main__":
 
     # Override configure_optimizers
     def custom_configure_optimizers():
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.00026136331295947005)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.0002185089474245037)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
             max_lr=0.0014269201894000047,
             steps_per_epoch=len(train_loader),
-            epochs=20,
+            epochs=None  # Set your own value,
             pct_start=0.4354149725443287,
             anneal_strategy='cos',
             cycle_momentum=False,
@@ -96,9 +96,9 @@ if __name__ == "__main__":
 
     model.configure_optimizers = custom_configure_optimizers
 
-    early_stop = EarlyStopping(monitor="val_loss", patience=5)
+    early_stop = EarlyStopping(monitor="val_loss", patience=10)
     trainer = Trainer(
-        max_epochs=20,
+        max_epochs=None  # Set your own value,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=1,
         callbacks=[early_stop],

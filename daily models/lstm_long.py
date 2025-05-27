@@ -87,12 +87,12 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
 
-hidden_size = 41
+hidden_size = 504
 num_layers = 3
-dropout = 0.05
-learning_rate = 0.0045968223394529896
+dropout = 0.0
+learning_rate = 0.0004850280141253065
 batch_size = None  # Set your own value
-epochs = 65  #CHANGED BY ME to 25 FROM 65 SO IT DOESNT OVERFIT but backtesting results dont change!!!
+epochs = 60  #CHANGED BY ME to 25 FROM 65 SO IT DOESNT OVERFIT but backtesting results dont change!!!
 sequence_length = 15
 
 

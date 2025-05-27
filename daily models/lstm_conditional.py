@@ -103,13 +103,13 @@ combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_va
 # Align and Sort Data
 X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test = combine_and_sort_data( combined_X_train, combined_y_train, index_train, combined_X_valid, combined_y_valid, index_valid, combined_X_test, combined_y_test, index_test)
 
-hidden_size = 240
-num_layers = 3
-dropout = 0.4
-learning_rate = 0.0018303062484727483
+hidden_size = 181
+num_layers = 2
+dropout = 0.1
+learning_rate = 0.009852364548157966
 batch_size = None  # Set your own value
-epochs = 90
-sequence_length = 15
+epochs = 45
+sequence_length = None  # Set your own value5
 
 print('-' * 100)
 

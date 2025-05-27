@@ -84,13 +84,13 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = wide_lstm_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-hidden_size = 50
+hidden_size = 48
 num_layers = None  # Set your own value
 dropout = 0.5
-learning_rate = 0.0007299307755298721
+learning_rate = 0.003589269644853196
 batch_size = 112
-epochs = 20
-sequence_length = None  # Set your own value0
+epochs = 15
+sequence_length = None  # Set your own value5
 
 
 print('-' * 100)

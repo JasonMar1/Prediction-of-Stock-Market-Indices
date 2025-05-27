@@ -100,7 +100,7 @@ if __name__ == "__main__":
     prediction_length = 1  # 1-day ahead
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=500, callbacks=[log_best_trial])
+    study.optimize(objective, n_trials=100, callbacks=[log_best_trial])
 
     print("Best hyperparameters:")
     print(study.best_trial)

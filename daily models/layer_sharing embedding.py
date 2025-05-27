@@ -118,20 +118,20 @@ TEST_END_DATE = "2025-01-01"
 X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sharing_load_daily_data(True, TRAIN_START_DATE, TRAIN_END_DATE, VALID_START_DATE, VALID_END_DATE, TEST_START_DATE, TEST_END_DATE)
 
 
-hidden_size = 332
-num_layers = 2
-dropout = None  # Set your own value
-learning_rate = 0.001043578040821334
+hidden_size = 154
+num_layers = None  # Set your own value
+dropout = 0.1
+learning_rate = 0.0013378263486894257
 batch_size = 112
 sequence_length = None  # Set your own value0
-epochs = 5
+epochs = 45
 num_heads = None  # Set your own value
 
 
 print('-' * 100)
 
 model = LSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads, num_indices=4, embedding_dim=None  # Set your own value).to(device)
-criterion = nn.MSELoss()
+criterion = nn.L1Loss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, X_valid, y_valid, X_test, y_test, sequence_length, batch_size, device)

@@ -67,13 +67,13 @@ def get_dataloaders(X_train, y_train, X_valid, y_valid, seq_length, batch_size, 
 
 
 def objective(trial):
-    hidden_size = 50
+    hidden_size = 48
     num_layers = None  # Set your own value
     dropout = 0.5
-    learning_rate = 0.0007299307755298721
+    learning_rate = 0.003589269644853196
     batch_size = 112
-    epochs = 20
-    seq_length = 20
+    epochs = 15
+    seq_length = 35
 
     patience = 30
 
@@ -149,7 +149,7 @@ def objective(trial):
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=500)
+study.optimize(objective, n_trials=100)
 
 print("Best hyperparameters:")
 print(study.best_trial)

@@ -146,13 +146,13 @@ X_train, y_train, X_valid, y_valid, X_test, y_test, df_test, features = layer_sh
 # num_heads = None  # Set your own value
 
 
-hidden_size = 200
-num_layers = 2
-dropout = None  # Set your own value
-learning_rate = 0.001
-batch_size = 100
+hidden_size = 154
+num_layers = None  # Set your own value
+dropout = 0.1
+learning_rate = 0.0013378263486894257
+batch_size = 112
 sequence_length = None  # Set your own value0
-epochs = 4
+epochs = 45
 num_heads = None  # Set your own value
 
 
@@ -170,7 +170,7 @@ num_heads = None  # Set your own value
 print('-' * 100)
 
 model = SharedLSTM(input_size=len(features), hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=1, num_heads=num_heads, num_indices=4, embedding_dim=None  # Set your own value).to(device)
-criterion = nn.MSELoss()
+criterion = nn.L1Loss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # train_loader, valid_loader, test_loader = get_dataloaders(X_train, y_train, index_train, X_valid, y_valid, index_valid, X_test, y_test, index_test, sequence_length, batch_size, device)
@@ -188,13 +188,13 @@ valid_losses = []
 
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.006098274606304232,
+    max_lr=0.02210825158523426,
     steps_per_epoch=len(train_loader),
     epochs=epochs,
-    pct_start=0.2749320007622838,
+    pct_start=0.10550419521943612,
     anneal_strategy='cos',
-    div_factor=6,
-    final_div_factor=None  # Set your own value5,
+    div_factor=8,
+    final_div_factor=305,
 )
 
 for epoch in range(epochs):

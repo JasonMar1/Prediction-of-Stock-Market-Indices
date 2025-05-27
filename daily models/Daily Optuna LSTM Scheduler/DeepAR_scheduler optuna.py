@@ -13,12 +13,12 @@ def objective(trial):
     print(f"\n Trial {trial.number}")
 
     max_encoder_length = 10
-    learning_rate = 0.00026136331295947005
-    hidden_size = 36
-    rnn_layers = 3
-    dropout = 0.35
-    batch_size = None  # Set your own value
-    epochs = 20
+    learning_rate = 0.0002185089474245037
+    hidden_size = 87
+    rnn_layers = 2
+    dropout = 0.15
+    batch_size = 112
+    epochs = 15
 
 
     # Scheduler-specific hyperparameters to be tuned

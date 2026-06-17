@@ -229,6 +229,11 @@ The optimization process explores parameters such as:
 
 Learning rate scheduling is performed using **OneCycleLR**.
 
+> **Note on Hyperparameter Values:**
+> 
+> The final hyperparameter configurations for all models have been intentionally omitted from this repository and are initialized as `None` throughout the codebase.
+> Arriving at the final configuration required extensive experimentation, iterative tuning, and significant compute time as part of a formal academic research process. Sharing them publicly would undermine the research effort behind this work.
+> If you wish to reproduce or extend this research, hyperparameter optimization can be performed using the provided Optuna scripts.
 ---
 
 ## Data Pipeline

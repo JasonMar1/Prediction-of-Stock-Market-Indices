@@ -327,24 +327,26 @@ The experimental study revealed that:
 
 ```text
 ├── index_data/
-│   ├── DJA.csv
-│   ├── GSPC.csv
-│   ├── IXIC.csv
-│   └── NYA.csv
+│   ├── DJA.INDX.csv
+│   ├── GSPC.INDX.csv
+│   ├── IXIC.INDX.csv
+│   ├── NYA.INDX.csv
 │
-├── daily_models/
-├── monthly_models/
-│
+├── daily models/
+│   ├── Daily Optuna/
+│   ├── Daily Predictions/
+│   └── backtesting/
+├── monthly models/
+│   ├── Monthly Optuna/
+│   ├── Monthly Predictions/
+│   └── backtesting/
 ├── data_loader.py
 ├── data_loader_long.py
 ├── data_loader_wide.py
 ├── data_loader_conditional.py
-├── data_loader_deepar.py
-├── data_loader_tft.py
-│
-├── backtesting/
-├── optuna/
-└── results/
+├── data_loader_layer_sharing.py
+├── data_loader_DeepAR.py
+└── data_loader_tft.py
 ```
 
 ---
